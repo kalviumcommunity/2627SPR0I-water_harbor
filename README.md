@@ -49,9 +49,9 @@ cd 2627SPR0I-water_harbor
 
 ### Start Local Development (Current Foundation)
 
-> **Note:** Full Docker Compose configuration and database integration are in progress; the commands below run the current backend and frontend foundation locally.
+> **Note:** The backend database integration with PostgreSQL 17 and SQLAlchemy 2.0 is complete. Follow the steps below or consult [backend/README.md](backend/README.md) for full details.
 
-**Backend (FastAPI):**
+**Backend (FastAPI + PostgreSQL + Alembic):**
 
 ```bash
 cd backend
@@ -60,8 +60,19 @@ python -m venv venv
 # Windows (PowerShell): .\venv\Scripts\Activate.ps1
 # macOS / Linux: source venv/bin/activate
 pip install -r requirements.txt
+
+# Configure environment variables (PostgreSQL connection)
+cp .env.example .env
+# Edit .env with your local PostgreSQL credentials
+
+# Run database migrations
+alembic upgrade head
+
+# Start FastAPI development server
 uvicorn app.main:app --reload
 ```
+
+Interactive documentation is available at `http://localhost:8000/docs`. Run tests with `pytest -v`.
 
 **Frontend (Vite + React):**
 
