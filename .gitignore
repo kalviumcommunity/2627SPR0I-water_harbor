@@ -17,8 +17,16 @@ backend/.env.*
 # Environment secrets
 .env
 .env.*
+!.env.example
+!backend/.env.example
+!frontend/.env.example
 
 
 # OS and editor
 .DS_Store
 .vscode/
+
+# Python test and cache files
+.pytest_cache/
+__pycache__/
+*.py[cod]
