@@ -57,3 +57,7 @@ class IssueReportResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+
+class IssueReportResolve(BaseModel):
+    resolved_by: Optional[str] = Field("facilities_staff", description="Staff identifier who confirmed resolution")
+

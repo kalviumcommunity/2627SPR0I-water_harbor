@@ -2,7 +2,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.schemas import IssueReportCreate, IssueReportResponse
+from app.schemas import IssueReportCreate, IssueReportResolve, IssueReportResponse
 from app import crud
 
 router = APIRouter(prefix="/reports", tags=["Issue Reports"])
@@ -62,4 +62,18 @@ def get_report(
             detail=f"Report with id {id} not found",
         )
     return report
+
+
+@router.post("/{id}/resolve", response_model=IssueReportResponse)
+def resolve_report(
+    id: int,
+    resolve_in: Optional[IssueReportResolve] = None,
+    db: Session = Depends(get_db),
+):
+    """
+    Staff endpoint to confirm resolution of an issue report.
+    Updates report status to staff_confirmed_resolved and sets resolved_at and resolved_by.
+    """
+    resolved_by = resolve_in.resolved_by if resolve_in and resolve_in.resolved_by else "facilities_staff"
+    return crud.resolve_report(db, report_id=id, resolved_by=resolved_by)
 
