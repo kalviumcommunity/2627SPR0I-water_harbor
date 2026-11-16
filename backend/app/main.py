@@ -1,12 +1,23 @@
 from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.orm import Session
-from app.database import get_db
+from app.core.config import settings
+from app.db.session import get_db
 from app.routers import reports, water_points
 
-app = FastAPI(title="Campus WaterPoint Board")
+app = FastAPI(title=settings.PROJECT_NAME)
 
-# Mount API routers
+# Middleware configuration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Router registration
 app.include_router(water_points.router, prefix="/api")
 app.include_router(reports.router, prefix="/api")
 
