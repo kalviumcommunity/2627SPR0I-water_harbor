@@ -75,7 +75,11 @@ class ReportService:
             )
 
     def resolve_report(
-        self, db: Session, report_id: int, resolved_by: str = "facilities_staff"
+        self,
+        db: Session,
+        report_id: int,
+        resolved_by: str = "facilities_staff",
+        resolution_notes: Optional[str] = None,
     ) -> IssueReport:
         """
         Mark an issue report as resolved by facilities staff.
@@ -89,7 +93,10 @@ class ReportService:
             )
 
         return report_repo.update_status_resolved(
-            db, report=report, resolved_by=resolved_by
+            db,
+            report=report,
+            resolved_by=resolved_by,
+            resolution_notes=resolution_notes,
         )
 
 

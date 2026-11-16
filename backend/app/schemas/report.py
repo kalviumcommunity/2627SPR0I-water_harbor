@@ -28,5 +28,20 @@ class IssueReportResponse(BaseModel):
     reported_at: datetime
     resolved_at: Optional[datetime] = None
     resolved_by: Optional[str] = None
+    resolution_notes: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class IssueReportResolve(BaseModel):
+    resolved_by: str = Field("facilities_staff", description="Staff identifier or name")
+    resolution_notes: Optional[str] = Field(None, max_length=300, description="Notes detailing the repair action")
+
+    @field_validator("resolution_notes")
+    @classmethod
+    def validate_notes(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None:
+            trimmed = v.strip()
+            return trimmed if trimmed else None
+        return None
+

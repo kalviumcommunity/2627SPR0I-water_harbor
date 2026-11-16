@@ -22,7 +22,8 @@ class Settings(BaseSettings):
     POSTGRES_PORT: int = 5432
     POSTGRES_DB: str = "waterpoint_db"
 
-    # Security & Staff Authentication (reserved for future sprint features)
+    # Security & Staff Authentication
+    STAFF_API_KEY: str = "campus-staff-key-2026"
     JWT_SECRET_KEY: str = "default-insecure-secret-key-change-in-production"
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30

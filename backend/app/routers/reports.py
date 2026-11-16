@@ -2,8 +2,9 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 from app.db.session import get_db
-from app.schemas.report import IssueReportCreate, IssueReportResponse
+from app.schemas.report import IssueReportCreate, IssueReportResolve, IssueReportResponse
 from app.services.report_service import report_service
+from app.core.security import verify_staff_key
 
 router = APIRouter(prefix="/reports", tags=["Issue Reports"])
 
@@ -54,15 +55,31 @@ def get_report(
     return report_service.get_report_or_404(db, report_id=id)
 
 
+@router.post("/{id}/resolve", response_model=IssueReportResponse)
 @router.patch("/{id}/resolve", response_model=IssueReportResponse)
 def resolve_report(
     id: int,
-    resolved_by: str = Query("facilities_staff", description="Staff identifier or name"),
+    resolve_in: Optional[IssueReportResolve] = None,
+    resolved_by: Optional[str] = Query(None, description="Staff identifier or name (fallback)"),
+    _staff_key: str = Depends(verify_staff_key),
     db: Session = Depends(get_db),
 ):
     """
     Confirm resolution of an issue report.
-    Authorized facilities staff confirm resolution.
+    Authorized facilities staff confirm resolution using X-Staff-Key header.
     Updates report status to staff_confirmed_resolved and sets resolved_at timestamp.
     """
-    return report_service.resolve_report(db, report_id=id, resolved_by=resolved_by)
+    staff_name = "facilities_staff"
+    notes = None
+    if resolve_in:
+        staff_name = resolve_in.resolved_by or staff_name
+        notes = resolve_in.resolution_notes
+    elif resolved_by:
+        staff_name = resolved_by
+
+    return report_service.resolve_report(
+        db,
+        report_id=id,
+        resolved_by=staff_name,
+        resolution_notes=notes,
+    )

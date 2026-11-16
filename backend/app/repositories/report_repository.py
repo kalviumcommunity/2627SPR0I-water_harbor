@@ -65,12 +65,17 @@ class ReportRepository:
         return new_report
 
     def update_status_resolved(
-        self, db: Session, report: IssueReport, resolved_by: str
+        self,
+        db: Session,
+        report: IssueReport,
+        resolved_by: str,
+        resolution_notes: Optional[str] = None,
     ) -> IssueReport:
-        """Mark report status resolved with timestamp and resolver."""
+        """Mark report status resolved with timestamp, resolver, and optional notes."""
         report.status = ReportStatus.STAFF_CONFIRMED_RESOLVED.value
         report.resolved_at = datetime.now(timezone.utc)
         report.resolved_by = resolved_by.strip() if resolved_by else "facilities_staff"
+        report.resolution_notes = resolution_notes.strip() if resolution_notes else None
         db.commit()
         db.refresh(report)
         return report

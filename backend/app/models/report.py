@@ -53,6 +53,10 @@ class IssueReport(Base):
         String(100),
         nullable=True,
     )
+    resolution_notes: Mapped[Optional[str]] = mapped_column(
+        String(300),
+        nullable=True,
+    )
 
     # Relationships
     water_point: Mapped["WaterPoint"] = relationship(

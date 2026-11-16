@@ -64,9 +64,23 @@ def test_create_water_point_validation_empty_fields(client: TestClient):
     assert res3.status_code == 422
 
 
+def test_create_water_point_with_building(client: TestClient):
+    """Create a water point with explicit building field."""
+    payload = {
+        "name": "Science Block 3rd Floor",
+        "location": "Near Physics Lab 301",
+        "building": "Science Block",
+    }
+    response = client.post("/api/water-points", json=payload)
+    assert response.status_code == 201
+    data = response.json()
+    assert data["name"] == payload["name"]
+    assert data["building"] == "Science Block"
+
+
 def test_water_point_database_model_persistence(db: Session):
     """Direct SQLAlchemy model persistence and retrieval."""
-    wp = WaterPoint(name="Sports Complex", location="Gym Entrance")
+    wp = WaterPoint(name="Sports Complex", location="Gym Entrance", building="Sports Complex")
     db.add(wp)
     db.commit()
     db.refresh(wp)
@@ -76,5 +90,6 @@ def test_water_point_database_model_persistence(db: Session):
     assert retrieved is not None
     assert retrieved.name == "Sports Complex"
     assert retrieved.location == "Gym Entrance"
+    assert retrieved.building == "Sports Complex"
     assert retrieved.created_at is not None
 
