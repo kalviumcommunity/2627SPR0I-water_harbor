@@ -1,9 +1,9 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
-from app.database import get_db
-from app.schemas import IssueReportCreate, IssueReportResponse
-from app import crud
+from app.db.session import get_db
+from app.schemas.report import IssueReportCreate, IssueReportResponse
+from app.services.report_service import report_service
 
 router = APIRouter(prefix="/reports", tags=["Issue Reports"])
 
@@ -18,7 +18,7 @@ def submit_report(
     Students can submit reports without creating accounts.
     Enforces business rules preventing duplicate active unresolved reports.
     """
-    return crud.create_issue_report(db, report_in)
+    return report_service.create_issue_report(db, report_in)
 
 
 @router.get("", response_model=List[IssueReportResponse])
@@ -35,10 +35,8 @@ def list_reports(
     limit: int = Query(100, ge=1, le=500, description="Limit for pagination"),
     db: Session = Depends(get_db),
 ):
-    """
-    Retrieve issue reports with optional status and water point filtering.
-    """
-    return crud.get_issue_reports(
+    """Retrieve issue reports with optional status and water point filtering."""
+    return report_service.list_reports(
         db,
         status_filter=status,
         water_point_id=water_point_id,
@@ -52,14 +50,19 @@ def get_report(
     id: int,
     db: Session = Depends(get_db),
 ):
-    """
-    Retrieve details of an issue report by ID.
-    """
-    report = crud.get_issue_report(db, report_id=id)
-    if not report:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Report with id {id} not found",
-        )
-    return report
+    """Retrieve details of an issue report by ID."""
+    return report_service.get_report_or_404(db, report_id=id)
 
+
+@router.patch("/{id}/resolve", response_model=IssueReportResponse)
+def resolve_report(
+    id: int,
+    resolved_by: str = Query("facilities_staff", description="Staff identifier or name"),
+    db: Session = Depends(get_db),
+):
+    """
+    Confirm resolution of an issue report.
+    Authorized facilities staff confirm resolution.
+    Updates report status to staff_confirmed_resolved and sets resolved_at timestamp.
+    """
+    return report_service.resolve_report(db, report_id=id, resolved_by=resolved_by)

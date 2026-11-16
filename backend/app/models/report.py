@@ -1,6 +1,6 @@
 import enum
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional, TYPE_CHECKING
 from sqlalchemy import (
     DateTime,
     ForeignKey,
@@ -11,32 +11,15 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
-from app.database import Base
+from app.db.base import Base
+
+if TYPE_CHECKING:
+    from app.models.water_point import WaterPoint
 
 
 class ReportStatus(str, enum.Enum):
     REPORTED_UNAVAILABLE = "reported_unavailable"
     STAFF_CONFIRMED_RESOLVED = "staff_confirmed_resolved"
-
-
-class WaterPoint(Base):
-    __tablename__ = "water_points"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    name: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
-    location: Mapped[str] = mapped_column(String(255), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-        nullable=False,
-    )
-
-    # Relationships - preserve historical reports; do not delete old reports
-    reports: Mapped[List["IssueReport"]] = relationship(
-        "IssueReport",
-        back_populates="water_point",
-        order_by="desc(IssueReport.reported_at)",
-    )
 
 
 class IssueReport(Base):
@@ -87,4 +70,3 @@ class IssueReport(Base):
             postgresql_where=text("status = 'reported_unavailable'"),
         ),
     )
-

@@ -101,3 +101,48 @@ def test_list_reports_with_status_filter(client: TestClient):
     assert len(wp1_reports) == 1
     assert wp1_reports[0]["id"] == r1["id"]
 
+
+def test_resolve_report_endpoint_success(client: TestClient, sample_water_point: dict):
+    """Staff can confirm resolution via PATCH /api/reports/{id}/resolve."""
+    wp_id = sample_water_point["id"]
+    create_res = client.post(
+        "/api/reports",
+        json={"water_point_id": wp_id, "description": "Filter replacement needed"},
+    )
+    assert create_res.status_code == 201
+    report_id = create_res.json()["id"]
+
+    res = client.patch(
+        f"/api/reports/{report_id}/resolve",
+        params={"resolved_by": "Officer Smith"},
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == ReportStatus.STAFF_CONFIRMED_RESOLVED.value
+    assert data["resolved_by"] == "Officer Smith"
+    assert data["resolved_at"] is not None
+
+
+def test_resolve_already_resolved_report_endpoint(client: TestClient, sample_water_point: dict):
+    """Attempting to resolve an already-resolved report returns 400."""
+    wp_id = sample_water_point["id"]
+    create_res = client.post(
+        "/api/reports",
+        json={"water_point_id": wp_id, "description": "Taps leaking"},
+    )
+    report_id = create_res.json()["id"]
+
+    res1 = client.patch(f"/api/reports/{report_id}/resolve")
+    assert res1.status_code == 200
+
+    res2 = client.patch(f"/api/reports/{report_id}/resolve")
+    assert res2.status_code == 400
+    assert "already resolved" in res2.json()["detail"].lower()
+
+
+def test_resolve_nonexistent_report_endpoint(client: TestClient):
+    """Attempting to resolve a non-existent report returns 404."""
+    res = client.patch("/api/reports/77777/resolve")
+    assert res.status_code == 404
+
+
