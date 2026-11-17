@@ -51,3 +51,16 @@ The host will be updated to one of the approved options:
 ## Payment
 
 No payment card or paid plan was used for this local setup.
+
+## Environment Configuration
+
+### Backend Configuration (`backend/.env`)
+Create a `.env` file in the `backend/` directory based on `backend/.env.example`:
+- `DATABASE_URL`: Connection string for PostgreSQL (e.g., `postgresql+psycopg://postgres:postgres@localhost:5432/waterpoint_db`).
+- `TEST_DATABASE_URL`: Connection string for integration tests (e.g., `postgresql+psycopg://postgres:postgres@localhost:5432/waterpoint_test_db`).
+- `STAFF_API_KEY`: Shared passkey for staff actions, sent via `X-Staff-Key` header (default: `campus-staff-key-2026`).
+- `CORS_ORIGINS`: JSON array of allowed origins for the Vite dev server and deployed frontend.
+
+### Frontend Configuration (`frontend/.env`)
+Create a `.env` file in the `frontend/` directory based on `frontend/.env.example`:
+- `VITE_API_URL`: Backend API base URL (default: `http://localhost:8000`).

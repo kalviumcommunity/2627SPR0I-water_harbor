@@ -18,6 +18,7 @@ class WaterPointRepository:
         db_obj = WaterPoint(
             name=water_point_in.name,
             location=water_point_in.location,
+            building=water_point_in.building,
         )
         db.add(db_obj)
         db.commit()

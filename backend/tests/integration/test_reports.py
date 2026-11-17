@@ -1,6 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 from app.models import ReportStatus
+from app.core.config import settings
 
 
 @pytest.fixture
@@ -103,7 +104,7 @@ def test_list_reports_with_status_filter(client: TestClient):
 
 
 def test_resolve_report_endpoint_success(client: TestClient, sample_water_point: dict):
-    """Staff can confirm resolution via PATCH /api/reports/{id}/resolve."""
+    """Staff can confirm resolution via PATCH /api/reports/{id}/resolve with X-Staff-Key."""
     wp_id = sample_water_point["id"]
     create_res = client.post(
         "/api/reports",
@@ -115,12 +116,73 @@ def test_resolve_report_endpoint_success(client: TestClient, sample_water_point:
     res = client.patch(
         f"/api/reports/{report_id}/resolve",
         params={"resolved_by": "Officer Smith"},
+        headers={"X-Staff-Key": settings.STAFF_API_KEY},
     )
     assert res.status_code == 200
     data = res.json()
     assert data["status"] == ReportStatus.STAFF_CONFIRMED_RESOLVED.value
     assert data["resolved_by"] == "Officer Smith"
     assert data["resolved_at"] is not None
+
+
+def test_resolve_post_endpoint_with_notes(client: TestClient, sample_water_point: dict):
+    """Staff can confirm resolution via POST /api/reports/{id}/resolve with JSON body notes."""
+    wp_id = sample_water_point["id"]
+    create_res = client.post(
+        "/api/reports",
+        json={"water_point_id": wp_id, "description": "Water flow stopped"},
+    )
+    assert create_res.status_code == 201
+    report_id = create_res.json()["id"]
+
+    res = client.post(
+        f"/api/reports/{report_id}/resolve",
+        json={
+            "resolved_by": "Technician Ramesh",
+            "resolution_notes": "Replaced valve cartridge and cleaned aerator.",
+        },
+        headers={"X-Staff-Key": settings.STAFF_API_KEY},
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == ReportStatus.STAFF_CONFIRMED_RESOLVED.value
+    assert data["resolved_by"] == "Technician Ramesh"
+    assert data["resolution_notes"] == "Replaced valve cartridge and cleaned aerator."
+
+
+def test_resolve_missing_staff_key_returns_401(client: TestClient, sample_water_point: dict):
+    """Attempting resolution without X-Staff-Key returns 401 Unauthorized."""
+    wp_id = sample_water_point["id"]
+    create_res = client.post(
+        "/api/reports",
+        json={"water_point_id": wp_id, "description": "Leaking tap"},
+    )
+    report_id = create_res.json()["id"]
+
+    res = client.post(
+        f"/api/reports/{report_id}/resolve",
+        json={"resolved_by": "Unauthenticated Staff"},
+    )
+    assert res.status_code == 401
+    assert "missing x-staff-key" in res.json()["detail"].lower()
+
+
+def test_resolve_invalid_staff_key_returns_401(client: TestClient, sample_water_point: dict):
+    """Attempting resolution with invalid X-Staff-Key returns 401 Unauthorized."""
+    wp_id = sample_water_point["id"]
+    create_res = client.post(
+        "/api/reports",
+        json={"water_point_id": wp_id, "description": "Leaking tap"},
+    )
+    report_id = create_res.json()["id"]
+
+    res = client.post(
+        f"/api/reports/{report_id}/resolve",
+        json={"resolved_by": "Staff Impersonator"},
+        headers={"X-Staff-Key": "wrong-key-value"},
+    )
+    assert res.status_code == 401
+    assert "invalid x-staff-key" in res.json()["detail"].lower()
 
 
 def test_resolve_already_resolved_report_endpoint(client: TestClient, sample_water_point: dict):
@@ -132,17 +194,27 @@ def test_resolve_already_resolved_report_endpoint(client: TestClient, sample_wat
     )
     report_id = create_res.json()["id"]
 
-    res1 = client.patch(f"/api/reports/{report_id}/resolve")
+    res1 = client.patch(
+        f"/api/reports/{report_id}/resolve",
+        headers={"X-Staff-Key": settings.STAFF_API_KEY},
+    )
     assert res1.status_code == 200
 
-    res2 = client.patch(f"/api/reports/{report_id}/resolve")
+    res2 = client.patch(
+        f"/api/reports/{report_id}/resolve",
+        headers={"X-Staff-Key": settings.STAFF_API_KEY},
+    )
     assert res2.status_code == 400
     assert "already resolved" in res2.json()["detail"].lower()
 
 
 def test_resolve_nonexistent_report_endpoint(client: TestClient):
     """Attempting to resolve a non-existent report returns 404."""
-    res = client.patch("/api/reports/77777/resolve")
+    res = client.patch(
+        "/api/reports/77777/resolve",
+        headers={"X-Staff-Key": settings.STAFF_API_KEY},
+    )
     assert res.status_code == 404
+
 
 

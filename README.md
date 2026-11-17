@@ -113,13 +113,14 @@ Manually verify:
 
 ## Environment Variables
 
-- `DATABASE_URL`
-- `JWT_SECRET_KEY`
-- `JWT_ALGORITHM`
-- `ACCESS_TOKEN_EXPIRE_MINUTES`
-- `VITE_API_BASE_URL`
+### Backend (`backend/.env`):
+- `DATABASE_URL`: PostgreSQL connection string (e.g. `postgresql+psycopg://postgres:postgres@localhost:5432/waterpoint_db`)
+- `TEST_DATABASE_URL`: Dedicated database connection string for tests (`waterpoint_test_db`)
+- `STAFF_API_KEY`: Shared secret key required via `X-Staff-Key` header for staff resolution endpoints (default: `campus-staff-key-2026`)
+- `CORS_ORIGINS`: Allowed origins list for CORS (defaults to `["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000", "http://localhost:8000"]`)
 
-Refer to `.env.example` once added for the actual configuration.
+### Frontend (`frontend/.env`):
+- `VITE_API_URL`: Base URL of the backend FastAPI service (default: `http://localhost:8000`)
 
 ## Demo Link
 

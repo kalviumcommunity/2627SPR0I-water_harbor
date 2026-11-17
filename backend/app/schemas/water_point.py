@@ -1,10 +1,12 @@
 from datetime import datetime
+from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class WaterPointBase(BaseModel):
     name: str = Field(..., description="Water point name")
     location: str = Field(..., description="Campus location or description")
+    building: Optional[str] = Field(None, description="Campus building name")
 
     @field_validator("name", "location")
     @classmethod
@@ -15,6 +17,14 @@ class WaterPointBase(BaseModel):
         if not trimmed:
             raise ValueError("Field cannot be empty or contain only whitespace")
         return trimmed
+
+    @field_validator("building")
+    @classmethod
+    def validate_building(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None:
+            trimmed = v.strip()
+            return trimmed if trimmed else None
+        return None
 
 
 class WaterPointCreate(WaterPointBase):

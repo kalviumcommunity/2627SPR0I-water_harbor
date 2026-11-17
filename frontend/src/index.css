@@ -1,1 +1,186 @@
-@import './styles/main.css';
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #10132b;
+  --color-cobalt: #2237ff;
+  --color-coral: #ff5a4e;
+  --color-sun: #ffd23f;
+  --color-mint: #35d99a;
+  --color-lilac: #c9b8ff;
+  --color-sky: #d9f1ff;
+  --color-paper: #fffdf7;
+
+  --font-heading: "Bagel Fat One", cursive, sans-serif;
+  --font-body: "Figtree", sans-serif;
+
+  --shadow-hard: 4px 4px 0px #10132b;
+  --shadow-hard-sm: 2px 2px 0px #10132b;
+  --shadow-hard-lg: 6px 6px 0px #10132b;
+  --shadow-hard-xl: 8px 8px 0px #10132b;
+}
+
+:root {
+  --color-ink: #10132b;
+  --color-cobalt: #2237ff;
+  --color-coral: #ff5a4e;
+  --color-sun: #ffd23f;
+  --color-mint: #35d99a;
+  --color-lilac: #c9b8ff;
+  --color-sky: #d9f1ff;
+  --color-paper: #fffdf7;
+  --bg-page: #fffdf7;
+  --text-main: #10132b;
+  --border-color: #10132b;
+  --shadow-color: #10132b;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-paper: #131738;
+    --color-ink: #f2f5ff;
+    --color-sky: #1f2858;
+    --bg-page: #0f122c;
+    --text-main: #f2f5ff;
+    --border-color: #f2f5ff;
+    --shadow-color: #060714;
+  }
+
+  body {
+    background-color: var(--bg-page);
+    color: var(--text-main);
+  }
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  background-color: var(--bg-page);
+  color: var(--text-main);
+  font-family: "Figtree", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+input,
+select,
+textarea {
+  color: var(--text-main);
+  background-color: var(--color-paper);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-main);
+  opacity: 0.5;
+}
+
+h1, h2, h3, h4, .font-heading {
+  font-family: "Bagel Fat One", cursive, sans-serif;
+  letter-spacing: 0.02em;
+}
+
+/* Custom tactile borders and shadows */
+.border-ink-3 {
+  border: 3px solid var(--border-color);
+}
+
+.shadow-hard {
+  box-shadow: 4px 4px 0px var(--shadow-color);
+}
+
+.shadow-hard-sm {
+  box-shadow: 2px 2px 0px var(--shadow-color);
+}
+
+.shadow-hard-lg {
+  box-shadow: 6px 6px 0px var(--shadow-color);
+}
+
+.shadow-hard-xl {
+  box-shadow: 8px 8px 0px var(--shadow-color);
+}
+
+.btn-tactile {
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+
+.btn-tactile:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0px var(--shadow-color);
+}
+
+.btn-tactile:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0px var(--shadow-color);
+}
+
+/* Translucent Frosted Glass Utilities */
+.glass-modal {
+  background-color: color-mix(in srgb, var(--color-paper) 78%, transparent);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+}
+
+.glass-card {
+  background-color: color-mix(in srgb, var(--color-paper) 80%, transparent);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+}
+
+.glass-input {
+  background-color: color-mix(in srgb, var(--color-paper) 60%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Asymmetric card corners */
+.card-asymm-1 {
+  border-radius: 20px 14px 22px 16px;
+}
+
+.card-asymm-2 {
+  border-radius: 14px 22px 16px 20px;
+}
+
+/* Water Drop bobbing keyframes */
+@keyframes bob-gentle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes bob-urgent {
+  0%, 100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-7px) rotate(2deg);
+  }
+}
+
+.animate-bob {
+  animation: bob-gentle 3.2s ease-in-out infinite;
+}
+
+.animate-bob-fast {
+  animation: bob-urgent 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-bob,
+  .animate-bob-fast {
+    animation: none !important;
+  }
+  .btn-tactile {
+    transition: none !important;
+  }
+}
+
+/* Accessibility focus ring */
+:focus-visible {
+  outline: 3px solid #2237ff !important;
+  outline-offset: 3px;
+}

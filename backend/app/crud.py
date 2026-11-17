@@ -65,6 +65,12 @@ def resolve_report(
     db: Session,
     report_id: int,
     resolved_by: str = "facilities_staff",
+    resolution_notes: Optional[str] = None,
 ) -> IssueReport:
     """Helper function to mark an issue report as resolved."""
-    return report_service.resolve_report(db, report_id=report_id, resolved_by=resolved_by)
+    return report_service.resolve_report(
+        db,
+        report_id=report_id,
+        resolved_by=resolved_by,
+        resolution_notes=resolution_notes,
+    )
