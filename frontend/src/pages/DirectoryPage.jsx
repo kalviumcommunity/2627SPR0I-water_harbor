@@ -155,7 +155,7 @@ export function DirectoryPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by name or room..."
               aria-label="Search water points"
-              className="w-full pl-10 pr-4 py-2.5 bg-white border-2 border-ink rounded-xl text-xs sm:text-sm shadow-hard-sm focus:border-cobalt focus:ring-0 placeholder:text-ink/40 font-medium"
+              className="w-full pl-10 pr-4 py-2.5 bg-paper text-ink border-2 border-ink rounded-xl text-xs sm:text-sm shadow-hard-sm focus:border-cobalt focus:ring-0 placeholder:text-ink/40 font-medium"
             />
           </div>
 
@@ -174,7 +174,7 @@ export function DirectoryPage() {
                   id="building-filter"
                   value={selectedBuilding}
                   onChange={(e) => setSelectedBuilding(e.target.value)}
-                  className="w-full sm:w-auto py-2.5 px-3 bg-white border-2 border-ink rounded-xl text-xs sm:text-sm font-semibold shadow-hard-sm focus:border-cobalt focus:ring-0 cursor-pointer"
+                  className="w-full sm:w-auto py-2.5 px-3 bg-paper text-ink border-2 border-ink rounded-xl text-xs sm:text-sm font-semibold shadow-hard-sm focus:border-cobalt focus:ring-0 cursor-pointer"
                 >
                   <option value="ALL">All Buildings</option>
                   {buildings.map((bldg) => (

@@ -90,7 +90,7 @@ export function RepairDialog({ isOpen, onClose, onResolve, report, waterPointNam
               value={resolvedBy}
               onChange={(e) => setResolvedBy(e.target.value)}
               placeholder="e.g. Dave Miller (Plumbing)"
-              className="w-full px-3 py-2 text-sm bg-white border-2 border-ink rounded-xl shadow-hard-sm focus:border-cobalt focus:ring-0"
+              className="w-full px-3 py-2 text-sm bg-paper text-ink border-2 border-ink rounded-xl shadow-hard-sm focus:border-cobalt focus:ring-0 placeholder:text-ink/40"
               disabled={isSubmitting}
             />
           </div>
@@ -111,7 +111,7 @@ export function RepairDialog({ isOpen, onClose, onResolve, report, waterPointNam
               value={resolutionNotes}
               onChange={(e) => setResolutionNotes(e.target.value)}
               placeholder="e.g. Replaced internal filter cartridge, unclogged drain nozzle, verified clean flow."
-              className="w-full px-3 py-2 text-sm bg-white border-2 border-ink rounded-xl shadow-hard-sm focus:border-cobalt focus:ring-0"
+              className="w-full px-3 py-2 text-sm bg-paper text-ink border-2 border-ink rounded-xl shadow-hard-sm focus:border-cobalt focus:ring-0 placeholder:text-ink/40"
               disabled={isSubmitting}
             />
           </div>

@@ -105,18 +105,18 @@ export function StaffDashboard() {
         </div>
 
         {isAuthenticated ? (
-          <div className="bg-white border-2 border-ink shadow-hard-sm rounded-xl p-4 shrink-0 text-right">
-            <div className="flex items-center gap-2 justify-end text-xs font-bold text-ink mb-1">
+          <div className="bg-paper border-ink-3 shadow-hard-sm rounded-2xl p-4 shrink-0 text-right">
+            <div className="flex items-center gap-2 justify-end text-sm font-bold text-ink mb-1">
               <User className="w-4 h-4 text-cobalt" />
               <span>{staffName}</span>
             </div>
-            <p className="text-[11px] text-ink/60 mb-2">Active Staff Session</p>
+            <p className="text-xs text-ink/70 mb-3 font-medium">Active Staff Session</p>
             <button
               type="button"
               onClick={handleSignOut}
-              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-coral hover:bg-coral/10 rounded-md border border-coral/30 cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-coral bg-coral/10 hover:bg-coral hover:text-white rounded-xl border-2 border-coral transition-colors btn-tactile cursor-pointer shadow-hard-sm"
             >
-              <LogOut className="w-3 h-3" />
+              <LogOut className="w-3.5 h-3.5" />
               <span>Sign out</span>
             </button>
           </div>
@@ -159,7 +159,7 @@ export function StaffDashboard() {
                   value={inputName}
                   onChange={(e) => setInputName(e.target.value)}
                   placeholder="e.g. Dave Miller (Plumbing)"
-                  className="w-full px-3 py-2 text-xs sm:text-sm bg-white border-2 border-ink rounded-xl shadow-hard-sm focus:border-cobalt focus:ring-0 font-medium"
+                  className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-paper text-ink border-2 border-ink rounded-xl shadow-hard-sm focus:border-cobalt focus:ring-0 font-medium placeholder:text-ink/40"
                 />
               </div>
 
@@ -174,7 +174,7 @@ export function StaffDashboard() {
                   value={inputKey}
                   onChange={(e) => setInputKey(e.target.value)}
                   placeholder="Enter shared staff key..."
-                  className="w-full px-3 py-2 text-xs sm:text-sm bg-white border-2 border-ink rounded-xl shadow-hard-sm focus:border-cobalt focus:ring-0 font-mono"
+                  className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-paper text-ink border-2 border-ink rounded-xl shadow-hard-sm focus:border-cobalt focus:ring-0 font-mono placeholder:text-ink/40"
                 />
                 <p className="mt-1 text-[11px] text-ink/60">
                   Shared campus key (default: <code>campus-staff-key-2026</code>)
@@ -310,8 +310,8 @@ export function StaffDashboard() {
                             Original issue: &ldquo;{rep.description}&rdquo;
                           </p>
                           {rep.resolution_notes && (
-                            <div className="mt-1 text-xs bg-white/70 border border-ink/20 rounded-lg p-2 font-medium text-ink">
-                              <span className="font-bold">Resolution Notes: </span>
+                            <div className="mt-2 text-xs bg-paper border border-ink/30 rounded-lg p-2.5 font-medium text-ink">
+                              <span className="font-bold text-cobalt">Resolution Notes: </span>
                               {rep.resolution_notes}
                             </div>
                           )}

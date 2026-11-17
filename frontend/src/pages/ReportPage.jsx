@@ -196,7 +196,7 @@ export function ReportPage() {
                 setSelectedWpId(e.target.value);
                 setFeedback(null);
               }}
-              className="w-full py-2.5 px-3 bg-white border-2 border-ink rounded-xl text-xs sm:text-sm font-semibold shadow-hard-sm focus:border-cobalt focus:ring-0 cursor-pointer"
+              className="w-full py-2.5 px-3 bg-paper text-ink border-2 border-ink rounded-xl text-xs sm:text-sm font-semibold shadow-hard-sm focus:border-cobalt focus:ring-0 cursor-pointer"
             >
               <option value="" disabled>
                 Select a campus water point...
@@ -256,7 +256,7 @@ export function ReportPage() {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="e.g. Water is trickling very slowly and tastes metallic, or the chiller is warm."
-              className="w-full p-3 bg-white border-2 border-ink rounded-xl text-xs sm:text-sm shadow-hard-sm focus:border-cobalt focus:ring-0 placeholder:text-ink/40"
+              className="w-full p-3 bg-paper text-ink border-2 border-ink rounded-xl text-xs sm:text-sm shadow-hard-sm focus:border-cobalt focus:ring-0 placeholder:text-ink/40"
             />
           </div>
 
