@@ -33,18 +33,18 @@ export function RepairDialog({ isOpen, onClose, onResolve, report, waterPointNam
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/60 backdrop-blur-xs"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/30 backdrop-blur-md transition-all"
       role="dialog"
       aria-modal="true"
       aria-labelledby="repair-dialog-title"
     >
-      <div className="relative w-full max-w-lg bg-paper border-ink-3 shadow-hard-xl rounded-2xl p-6 text-ink animate-in fade-in zoom-in-95 duration-150">
+      <div className="relative w-full max-w-lg glass-modal border-ink-3 shadow-hard-xl rounded-2xl p-6 text-ink animate-in fade-in zoom-in-95 duration-150">
         {/* Close Button */}
         <button
           type="button"
           onClick={onClose}
           disabled={isSubmitting}
-          className="absolute top-4 right-4 p-1 rounded-lg border-2 border-ink bg-paper text-ink hover:bg-coral hover:text-white btn-tactile cursor-pointer"
+          className="absolute top-4 right-4 p-1.5 rounded-xl border-2 border-ink glass-input text-ink hover:bg-coral hover:text-white btn-tactile cursor-pointer"
           aria-label="Close dialog"
         >
           <X className="w-5 h-5" />
@@ -52,7 +52,7 @@ export function RepairDialog({ isOpen, onClose, onResolve, report, waterPointNam
 
         {/* Header */}
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-mint border-2 border-ink flex items-center justify-center shadow-hard-sm">
+          <div className="w-10 h-10 rounded-xl bg-mint border-2 border-ink flex items-center justify-center shadow-hard-sm shrink-0">
             <CheckCircle2 className="w-6 h-6 text-ink" />
           </div>
           <div>
@@ -66,13 +66,13 @@ export function RepairDialog({ isOpen, onClose, onResolve, report, waterPointNam
         </div>
 
         {/* Existing report context */}
-        <div className="bg-coral/10 border-2 border-coral/40 rounded-xl p-3 mb-4 text-xs">
+        <div className="bg-coral/15 border-2 border-coral/50 backdrop-blur-sm rounded-xl p-3 mb-4 text-xs">
           <span className="font-bold text-coral block mb-0.5">Reported Issue:</span>
           <p className="italic text-ink">&ldquo;{report.description}&rdquo;</p>
         </div>
 
         {errorMessage && (
-          <div className="mb-4 p-3 bg-coral/15 border-2 border-coral rounded-xl text-xs font-semibold text-coral flex items-center gap-2">
+          <div className="mb-4 p-3 bg-coral/20 border-2 border-coral rounded-xl text-xs font-semibold text-coral flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{errorMessage}</span>
           </div>
@@ -90,7 +90,7 @@ export function RepairDialog({ isOpen, onClose, onResolve, report, waterPointNam
               value={resolvedBy}
               onChange={(e) => setResolvedBy(e.target.value)}
               placeholder="e.g. Dave Miller (Plumbing)"
-              className="w-full px-3 py-2 text-sm bg-paper text-ink border-2 border-ink rounded-xl shadow-hard-sm focus:border-cobalt focus:ring-0 placeholder:text-ink/40"
+              className="w-full px-3 py-2 text-sm glass-input text-ink border-2 border-ink rounded-xl shadow-hard-sm focus:border-cobalt focus:ring-0 placeholder:text-ink/40"
               disabled={isSubmitting}
             />
           </div>
@@ -111,7 +111,7 @@ export function RepairDialog({ isOpen, onClose, onResolve, report, waterPointNam
               value={resolutionNotes}
               onChange={(e) => setResolutionNotes(e.target.value)}
               placeholder="e.g. Replaced internal filter cartridge, unclogged drain nozzle, verified clean flow."
-              className="w-full px-3 py-2 text-sm bg-paper text-ink border-2 border-ink rounded-xl shadow-hard-sm focus:border-cobalt focus:ring-0 placeholder:text-ink/40"
+              className="w-full px-3 py-2 text-sm glass-input text-ink border-2 border-ink rounded-xl shadow-hard-sm focus:border-cobalt focus:ring-0 placeholder:text-ink/40"
               disabled={isSubmitting}
             />
           </div>
@@ -121,7 +121,7 @@ export function RepairDialog({ isOpen, onClose, onResolve, report, waterPointNam
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="px-4 py-2 text-xs font-bold border-2 border-ink rounded-xl bg-paper text-ink hover:bg-sky btn-tactile cursor-pointer"
+              className="px-4 py-2 text-xs font-bold border-2 border-ink rounded-xl glass-input text-ink hover:bg-sky/60 btn-tactile cursor-pointer"
             >
               Cancel
             </button>
