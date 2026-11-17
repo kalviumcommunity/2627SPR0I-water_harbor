@@ -1,0 +1,30 @@
+# ── backend/.dockerignore ─────────────────────────────────────────────────
+# Keep the build context lean – nothing that is irrelevant to the image.
+
+# Virtual environments & caches
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Secrets – never bake .env into an image
+.env
+.env.*
+!.env.example
+
+# Test artefacts
+tests/
+
+# IDE / editor metadata
+.vscode/
+.idea/
+*.sw?
+.DS_Store
+
+# Git
+.git/
+.gitignore
