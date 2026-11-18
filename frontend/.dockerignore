@@ -1,0 +1,22 @@
+# ── frontend/.dockerignore ────────────────────────────────────────────────
+# Keeps the build context minimal – we only need source, not artefacts.
+
+# Node artefacts
+node_modules/
+dist/
+.npm/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# IDE / OS metadata
+.vscode/
+.idea/
+.DS_Store
+*.sw?
+
+# Git
+.git/
+.gitignore
