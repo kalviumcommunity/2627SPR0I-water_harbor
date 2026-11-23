@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Search, Filter, RotateCcw } from 'lucide-react';
+import { Search, Filter, RotateCcw, X } from 'lucide-react';
 import { useApp } from '../context/useApp';
 import WaterPointCard from '../components/WaterPointCard';
 import StatusTile from '../components/StatusTile';
@@ -148,15 +148,25 @@ export function DirectoryPage() {
         <div className="max-w-5xl mx-auto bg-paper border-ink-3 shadow-hard rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           {/* Search box */}
           <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink/60" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink/60 pointer-events-none" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by name or room..."
               aria-label="Search water points"
-              className="w-full pl-10 pr-4 py-2.5 bg-paper text-ink border-2 border-ink rounded-xl text-xs sm:text-sm shadow-hard-sm focus:border-cobalt focus:ring-0 placeholder:text-ink/40 font-medium"
+              className="w-full pl-10 pr-9 py-2.5 bg-paper text-ink border-2 border-ink rounded-xl text-xs sm:text-sm shadow-hard-sm focus:border-cobalt focus:ring-0 placeholder:text-ink/40 font-medium"
             />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                aria-label="Clear search query"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-ink/60 hover:text-ink hover:bg-ink/10 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
 
           {/* Building Select */}
@@ -203,6 +213,30 @@ export function DirectoryPage() {
       {/* Grid of Water Points */}
       <section aria-label="Water Points Directory" className="px-4">
         <div className="max-w-5xl mx-auto">
+          {/* Active Filter & Count Summary */}
+          {!loading && (
+            <div className="flex items-center justify-between text-xs font-semibold text-ink/75 mb-4 px-1">
+              <span>
+                Showing <strong className="text-ink font-bold">{filteredWaterPoints.length}</strong> of{' '}
+                {waterPoints.length} water points
+              </span>
+              {(activeFilter !== 'all' || selectedBuilding !== 'ALL' || searchQuery.trim()) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveFilter('all');
+                    setSelectedBuilding('ALL');
+                    setSearchQuery('');
+                  }}
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-coral hover:underline cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  <span>Reset filters</span>
+                </button>
+              )}
+            </div>
+          )}
+
           {loading ? (
             /* Loading Skeletons */
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
