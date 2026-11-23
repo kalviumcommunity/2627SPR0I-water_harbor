@@ -150,6 +150,13 @@ Manually verify:
 
 - `VITE_API_URL`: Base URL of the backend FastAPI service (default: `http://localhost:8000`)
 
+## GitHub Actions
+GitHub Actions runs the project's CI workflows automatically when code is pushed to main or when a pull request targeting main is opened or updated.
+Frontend CI: Installs frontend dependencies with npm ci, runs ESLint, and builds the frontend.
+Backend CI: Starts an isolated PostgreSQL 17 service, installs backend dependencies, runs Alembic migrations, and executes the backend test suite with pytest -v.
+To check the results, open the repository on GitHub, select the Actions tab or open a pull request and select Checks. Both Frontend CI and Backend CI should pass before merging.
+These workflows provide Continuous Integration (CI). They do not deploy the application.
+
 ## Demo Link
 
 Pending implementation and final sprint demo.
