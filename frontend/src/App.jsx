@@ -13,10 +13,10 @@ function AppContent() {
   const { toast, hideToast } = useApp();
 
   return (
-    <div className="min-h-screen flex flex-col justify-between pt-3">
+    <div className="min-h-screen flex flex-col justify-between bg-[#F3F6FC] text-[#102454]">
       <div>
         <Navbar />
-        <main className="pb-12">
+        <main>
           <Routes>
             <Route path="/" element={<DirectoryPage />} />
             <Route path="/report" element={<ReportPage />} />

@@ -1,128 +1,113 @@
 import { Link } from 'react-router-dom';
-import { MapPin, Clock, CheckCircle2, AlertTriangle, MessageSquare } from 'lucide-react';
-import WaterDrop from './WaterDrop';
+import { MapPin, Clock, Wrench } from 'lucide-react';
 import { formatRelativeTime } from '../utils/formatTime';
 
 /**
- * Poster-style WaterPointCard with tactile border, offset shadow,
- * asymmetric corners, and dynamic WaterDrop face.
+ * Refined WaterPointCard Component:
+ * - High scannability and clean visual hierarchy
+ * - Precise status indicators with live colored dot badges
+ * - Subtle report notes and quiet borders
+ * - Understated action CTA
  */
-export function WaterPointCard({ waterPoint, activeReport, recentResolvedReport, index = 0 }) {
-  // Compute the human-reported status
+export function WaterPointCard({ waterPoint, activeReport, recentResolvedReport }) {
+  // Compute human-reported status
   let computedStatus = 'no_recent_report';
   let statusLabel = 'No recent report';
-  let badgeBg = 'bg-lilac';
+  let badgeStyle = 'bg-[#F8FAFC] text-[#475569] border-[#DFE6F0]';
+  let dotColor = 'bg-[#8C9CB3]';
 
   if (activeReport) {
     computedStatus = 'reported_unavailable';
     statusLabel = 'Reported unavailable';
-    badgeBg = 'bg-coral text-white';
+    badgeStyle = 'bg-[#FDF2F2] text-[#B91C1C] border-[#F8C9C9]';
+    dotColor = 'bg-[#D94B4B]';
   } else if (recentResolvedReport) {
     computedStatus = 'staff_confirmed_resolved';
     statusLabel = 'Staff-confirmed resolved';
-    badgeBg = 'bg-mint text-ink';
+    badgeStyle = 'bg-[#EBF6EE] text-[#15803D] border-[#C6E7CF]';
+    dotColor = 'bg-[#2F8A57]';
   }
 
-  // Alternate tilt for poster feel
-  const tiltClass = index % 2 === 0 ? '-rotate-[0.4deg]' : 'rotate-[0.4deg]';
-  const asymmClass = index % 2 === 0 ? 'card-asymm-1' : 'card-asymm-2';
-
   return (
-    <article
-      className={`relative bg-paper text-ink border-ink-3 shadow-hard hover:shadow-hard-lg transition-all ${tiltClass} hover:rotate-0 ${asymmClass} p-5 sm:p-6 flex flex-col justify-between`}
-    >
+    <article className="wh-card p-4 sm:p-5 flex flex-col justify-between group">
       <div>
-        {/* Top Header: WaterDrop + Status Badge */}
-        <div className="flex items-start justify-between gap-4 mb-4">
-          <WaterDrop status={computedStatus} size="md" />
+        {/* Header: Facility Pill + Status Dot Badge */}
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <span className="inline-block px-2 py-0.5 text-[11px] font-medium text-[#5A6B87] bg-[#F1F5F9] border border-[#E2E8F0] rounded">
+            {waterPoint.building || 'Campus Facility'}
+          </span>
 
-          <div className="text-right">
-            <span
-              className={`inline-block px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-full border-2 border-ink shadow-hard-sm ${badgeBg}`}
-            >
-              {statusLabel}
-            </span>
-            {waterPoint.building && (
-              <div className="mt-1.5 text-xs font-medium text-ink/70">
-                {waterPoint.building}
-              </div>
-            )}
-          </div>
+          <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-medium rounded-full border ${badgeStyle}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${dotColor} shrink-0`} />
+            <span>{statusLabel}</span>
+          </span>
         </div>
 
-        {/* Water Point Name */}
-        <h3 className="text-lg sm:text-xl font-heading text-ink leading-tight mb-2">
+        {/* Station Name */}
+        <h3 className="text-base font-semibold text-[#102454] leading-snug tracking-tight mb-1 group-hover:text-[#162F6B] transition-colors">
           {waterPoint.name}
         </h3>
 
-        {/* Location detail */}
-        <div className="flex items-start gap-1.5 text-xs sm:text-sm text-ink/80 mb-4">
-          <MapPin className="w-4 h-4 shrink-0 text-cobalt mt-0.5" aria-hidden="true" />
-          <span>{waterPoint.location}</span>
+        {/* Location string */}
+        <div className="flex items-center gap-1.5 text-xs text-[#5A6B87] mb-3.5">
+          <MapPin className="w-3.5 h-3.5 shrink-0 text-[#8C9CB3]" aria-hidden="true" />
+          <span className="truncate">{waterPoint.location}</span>
         </div>
 
-        {/* Status Specific Description Box */}
+        {/* Status Callout Box */}
         {computedStatus === 'reported_unavailable' && activeReport && (
-          <div className="bg-coral/10 border-2 border-coral/40 rounded-xl p-3 mb-4 text-xs sm:text-sm">
-            <div className="flex items-center gap-1.5 font-bold text-coral mb-1">
-              <AlertTriangle className="w-3.5 h-3.5" aria-hidden="true" />
-              <span>Reported issue</span>
-            </div>
-            <p className="text-ink italic mb-2">
+          <div className="bg-[#FDF2F2]/60 border border-[#F8C9C9] rounded-lg p-3 mb-3.5 text-xs space-y-1">
+            <span className="font-semibold text-[#B91C1C] block text-[11px] uppercase tracking-wider">
+              Reported Issue
+            </span>
+            <p className="text-[#334155] italic leading-relaxed">
               &ldquo;{activeReport.description}&rdquo;
             </p>
-            <div className="flex items-center gap-1 text-[11px] text-ink/70">
-              <Clock className="w-3 h-3" aria-hidden="true" />
+            <div className="flex items-center gap-1 text-[11px] text-[#8C9CB3] pt-0.5">
+              <Clock className="w-3 h-3" />
               <span>Reported {formatRelativeTime(activeReport.reported_at)}</span>
             </div>
           </div>
         )}
 
         {computedStatus === 'staff_confirmed_resolved' && recentResolvedReport && (
-          <div className="bg-mint/15 border-2 border-mint/40 rounded-xl p-3 mb-4 text-xs sm:text-sm">
-            <div className="flex items-center gap-1.5 font-bold text-ink mb-1">
-              <CheckCircle2 className="w-3.5 h-3.5 text-mint" aria-hidden="true" />
-              <span>
-                Repaired by {recentResolvedReport.resolved_by || 'Staff'}
-              </span>
-            </div>
+          <div className="bg-[#EBF6EE]/60 border border-[#C6E7CF] rounded-lg p-3 mb-3.5 text-xs space-y-1">
+            <span className="font-semibold text-[#15803D] block text-[11px] uppercase tracking-wider">
+              Repaired &bull; {recentResolvedReport.resolved_by || 'Staff'}
+            </span>
             {recentResolvedReport.resolution_notes && (
-              <p className="text-ink/90 text-xs mb-2">
-                Note: {recentResolvedReport.resolution_notes}
+              <p className="text-[#334155] leading-relaxed">
+                {recentResolvedReport.resolution_notes}
               </p>
             )}
-            <div className="flex items-center gap-1 text-[11px] text-ink/70">
-              <Clock className="w-3 h-3" aria-hidden="true" />
+            <div className="flex items-center gap-1 text-[11px] text-[#8C9CB3] pt-0.5">
+              <Clock className="w-3 h-3" />
               <span>Resolved {formatRelativeTime(recentResolvedReport.resolved_at)}</span>
             </div>
           </div>
         )}
 
         {computedStatus === 'no_recent_report' && (
-          <div className="bg-lilac/20 border-2 border-lilac/50 rounded-xl p-3 mb-4 text-xs sm:text-sm text-ink/80">
-            <p>No issues reported recently by students or staff.</p>
+          <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg p-2.5 mb-3.5 text-[11px] text-[#5A6B87] flex items-center gap-1.5">
+            <Clock className="w-3 h-3 text-[#8C9CB3] shrink-0" />
+            <span>No reports submitted recently. Standard schedule.</span>
           </div>
         )}
       </div>
 
-      {/* Action footer */}
-      <div className="pt-3 border-t-2 border-ink/10 flex items-center justify-between gap-3">
-        {computedStatus === 'reported_unavailable' ? (
-          <Link
-            to={`/report?wp=${waterPoint.id}`}
-            className="w-full text-center py-2 px-3 text-xs sm:text-sm font-bold bg-sun text-ink border-2 border-ink rounded-xl shadow-hard-sm hover:-translate-y-0.5 btn-tactile"
-          >
-            Report update
-          </Link>
-        ) : (
-          <Link
-            to={`/report?wp=${waterPoint.id}`}
-            className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 text-xs sm:text-sm font-bold bg-sky text-ink border-2 border-ink rounded-xl shadow-hard-sm hover:-translate-y-0.5 btn-tactile"
-          >
-            <MessageSquare className="w-3.5 h-3.5" aria-hidden="true" />
-            <span>Tell us if it is down</span>
-          </Link>
-        )}
+      {/* Action Row */}
+      <div className="pt-3 border-t border-[#F1F5F9] flex items-center justify-between gap-3 text-xs">
+        <span className="text-[11px] font-mono text-[#8C9CB3]">
+          ID #{waterPoint.id}
+        </span>
+
+        <Link
+          to={`/report?wp=${waterPoint.id}`}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-[#102454] bg-[#F8FAFC] hover:bg-[#EDF2F9] border border-[#DFE6F0] transition-colors"
+        >
+          <Wrench className="w-3 h-3 text-[#5A6B87]" />
+          <span>Report Issue</span>
+        </Link>
       </div>
     </article>
   );

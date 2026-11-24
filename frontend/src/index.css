@@ -1,186 +1,138 @@
 @import "tailwindcss";
 
 @theme {
-  --color-ink: #10132b;
-  --color-cobalt: #2237ff;
-  --color-coral: #ff5a4e;
-  --color-sun: #ffd23f;
-  --color-mint: #35d99a;
-  --color-lilac: #c9b8ff;
-  --color-sky: #d9f1ff;
-  --color-paper: #fffdf7;
+  --color-navy: #102454;
+  --color-navy-dark: #0b1736;
+  --color-navy-light: #162f6b;
+  --color-navy-subtle: #edf2f9;
 
-  --font-heading: "Bagel Fat One", cursive, sans-serif;
-  --font-body: "Figtree", sans-serif;
+  --color-bg-canvas: #f3f6fc;
+  --color-surface: #ffffff;
+  --color-border-ui: #dfe6f0;
+  --color-border-subtle: #edf2f7;
 
-  --shadow-hard: 4px 4px 0px #10132b;
-  --shadow-hard-sm: 2px 2px 0px #10132b;
-  --shadow-hard-lg: 6px 6px 0px #10132b;
-  --shadow-hard-xl: 8px 8px 0px #10132b;
+  --color-gold: #d6a63c;
+  --color-gold-hover: #c4962e;
+  --color-gold-subtle: #fef8eb;
+
+  --color-status-green: #2f8a57;
+  --color-status-green-bg: #ebf6ee;
+  --color-status-green-border: #c6e7cf;
+
+  --color-status-amber: #d58a00;
+  --color-status-amber-bg: #fef7ea;
+  --color-status-amber-border: #fce1b5;
+
+  --color-status-red: #d94b4b;
+  --color-status-red-bg: #fdf2f2;
+  --color-status-red-border: #f8c9c9;
+
+  --color-text-main: #102454;
+  --color-text-secondary: #5a6b87;
+  --color-text-muted: #8c9cb3;
+
+  --font-heading: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 :root {
-  --color-ink: #10132b;
-  --color-cobalt: #2237ff;
-  --color-coral: #ff5a4e;
-  --color-sun: #ffd23f;
-  --color-mint: #35d99a;
-  --color-lilac: #c9b8ff;
-  --color-sky: #d9f1ff;
-  --color-paper: #fffdf7;
-  --bg-page: #fffdf7;
-  --text-main: #10132b;
-  --border-color: #10132b;
-  --shadow-color: #10132b;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-paper: #131738;
-    --color-ink: #f2f5ff;
-    --color-sky: #1f2858;
-    --bg-page: #0f122c;
-    --text-main: #f2f5ff;
-    --border-color: #f2f5ff;
-    --shadow-color: #060714;
-  }
-
-  body {
-    background-color: var(--bg-page);
-    color: var(--text-main);
-  }
+  --navy: #102454;
+  --navy-dark: #0b1736;
+  --bg-canvas: #f3f6fc;
+  --border-ui: #dfe6f0;
+  --gold: #d6a63c;
+  --green: #2f8a57;
+  --amber: #d58a00;
+  --red: #d94b4b;
+  --slate: #5a6b87;
 }
 
 body {
   margin: 0;
   padding: 0;
   min-height: 100vh;
-  background-color: var(--bg-page);
-  color: var(--text-main);
-  font-family: "Figtree", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: #f3f6fc;
+  color: #102454;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.011em;
 }
 
-input,
-select,
-textarea {
-  color: var(--text-main);
-  background-color: var(--color-paper);
+h1, h2, h3, h4, h5, h6, .font-heading {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.025em;
 }
 
-input::placeholder,
-textarea::placeholder {
-  color: var(--text-main);
-  opacity: 0.5;
+/* Premium Card Architecture */
+.wh-card {
+  background-color: #ffffff;
+  border: 1px solid #dfe6f0;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(16, 36, 84, 0.04);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-h1, h2, h3, h4, .font-heading {
-  font-family: "Bagel Fat One", cursive, sans-serif;
-  letter-spacing: 0.02em;
+.wh-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(16, 36, 84, 0.06);
 }
 
-/* Custom tactile borders and shadows */
-.border-ink-3 {
-  border: 3px solid var(--border-color);
+/* Hero Section Gradient: refined dark navy depth */
+.wh-hero-gradient {
+  background: linear-gradient(145deg, #09132d 0%, #102454 55%, #15326f 100%);
 }
 
-.shadow-hard {
-  box-shadow: 4px 4px 0px var(--shadow-color);
+/* Subtle Interactive Controls */
+.wh-btn-primary {
+  background-color: #d6a63c;
+  color: #0b1736;
+  font-weight: 600;
+  border-radius: 9px;
+  transition: background-color 0.15s ease, transform 0.05s ease;
 }
 
-.shadow-hard-sm {
-  box-shadow: 2px 2px 0px var(--shadow-color);
+.wh-btn-primary:hover {
+  background-color: #c4962e;
 }
 
-.shadow-hard-lg {
-  box-shadow: 6px 6px 0px var(--shadow-color);
+.wh-btn-primary:active {
+  transform: translateY(1px);
 }
 
-.shadow-hard-xl {
-  box-shadow: 8px 8px 0px var(--shadow-color);
+.wh-btn-navy {
+  background-color: #102454;
+  color: #ffffff;
+  font-weight: 600;
+  border-radius: 9px;
+  transition: background-color 0.15s ease, transform 0.05s ease;
 }
 
-.btn-tactile {
-  transition: transform 0.08s ease, box-shadow 0.08s ease;
+.wh-btn-navy:hover {
+  background-color: #162f6b;
 }
 
-.btn-tactile:hover {
-  transform: translate(-1px, -1px);
-  box-shadow: 5px 5px 0px var(--shadow-color);
+.wh-btn-navy:active {
+  transform: translateY(1px);
 }
 
-.btn-tactile:active {
-  transform: translate(2px, 2px);
-  box-shadow: 2px 2px 0px var(--shadow-color);
+.wh-btn-secondary {
+  background-color: #ffffff;
+  color: #102454;
+  border: 1px solid #dfe6f0;
+  font-weight: 500;
+  border-radius: 9px;
+  transition: all 0.15s ease;
 }
 
-/* Translucent Frosted Glass Utilities */
-.glass-modal {
-  background-color: color-mix(in srgb, var(--color-paper) 78%, transparent);
-  backdrop-filter: blur(28px) saturate(190%);
-  -webkit-backdrop-filter: blur(28px) saturate(190%);
+.wh-btn-secondary:hover {
+  background-color: #f8fafc;
+  border-color: #cbd5e1;
 }
 
-.glass-card {
-  background-color: color-mix(in srgb, var(--color-paper) 80%, transparent);
-  backdrop-filter: blur(16px) saturate(160%);
-  -webkit-backdrop-filter: blur(16px) saturate(160%);
-}
-
-.glass-input {
-  background-color: color-mix(in srgb, var(--color-paper) 60%, transparent);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-}
-
-/* Asymmetric card corners */
-.card-asymm-1 {
-  border-radius: 20px 14px 22px 16px;
-}
-
-.card-asymm-2 {
-  border-radius: 14px 22px 16px 20px;
-}
-
-/* Water Drop bobbing keyframes */
-@keyframes bob-gentle {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-5px);
-  }
-}
-
-@keyframes bob-urgent {
-  0%, 100% {
-    transform: translateY(0) rotate(-2deg);
-  }
-  50% {
-    transform: translateY(-7px) rotate(2deg);
-  }
-}
-
-.animate-bob {
-  animation: bob-gentle 3.2s ease-in-out infinite;
-}
-
-.animate-bob-fast {
-  animation: bob-urgent 1.4s ease-in-out infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .animate-bob,
-  .animate-bob-fast {
-    animation: none !important;
-  }
-  .btn-tactile {
-    transition: none !important;
-  }
-}
-
-/* Accessibility focus ring */
+/* Accessible focus ring */
 :focus-visible {
-  outline: 3px solid #2237ff !important;
-  outline-offset: 3px;
+  outline: 2px solid #102454;
+  outline-offset: 2px;
 }

@@ -1,31 +1,69 @@
 /**
- * Interactive Status Filter Tile.
- * Shows status category name, live count in Bagel Fat One, and custom badge.
+ * Restrained Campus Overview Metric Card:
+ * - Crisp white surface with 1px subtle border
+ * - Status dot indicator (Green, Red, Amber, Navy)
+ * - Tabular numerical figures
+ * - Informative micro-copy without noisy decorative gradients
  */
-export function StatusTile({ label, count, colorClass, active, onClick, id }) {
+export function StatusTile({
+  label,
+  count,
+  type = 'all', // 'all' | 'reported' | 'resolved' | 'none'
+  description,
+  active,
+  onClick,
+  id,
+}) {
+  // Status indicator dot colors
+  let dotColor = 'bg-[#102454]';
+  let defaultDesc = 'Across all campus facilities';
+
+  if (type === 'reported' || label.toLowerCase().includes('unavailable')) {
+    dotColor = 'bg-[#D94B4B]';
+    defaultDesc = 'Student reports awaiting repair';
+  } else if (type === 'resolved' || label.toLowerCase().includes('resolved')) {
+    dotColor = 'bg-[#2F8A57]';
+    defaultDesc = 'Verified ready for use';
+  } else if (type === 'none' || label.toLowerCase().includes('no recent')) {
+    dotColor = 'bg-[#D58A00]';
+    defaultDesc = 'Routine campus status active';
+  }
+
+  const descText = description || defaultDesc;
+
   return (
     <button
       type="button"
       id={id}
       onClick={onClick}
       aria-pressed={active}
-      className={`group relative flex-1 min-w-[140px] sm:min-w-[160px] p-3 sm:p-4 text-left border-ink-3 rounded-2xl cursor-pointer transition-all ${
+      className={`group relative text-left w-full bg-white rounded-xl p-4 sm:p-5 border transition-all duration-150 cursor-pointer ${
         active
-          ? 'translate-x-1 translate-y-1 shadow-hard-sm ring-3 ring-cobalt'
-          : 'shadow-hard hover:-translate-x-0.5 hover:-translate-y-0.5'
-      } ${colorClass}`}
+          ? 'border-[#102454] shadow-xs bg-[#FAFBFD]'
+          : 'border-[#DFE6F0] hover:border-[#CBD5E1] shadow-xs'
+      }`}
     >
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-xs sm:text-sm font-semibold tracking-wide uppercase text-ink/80 truncate">
-          {label}
-        </span>
+      <div className="flex items-center justify-between mb-2.5">
+        <div className="flex items-center gap-2">
+          <span className={`w-2 h-2 rounded-full ${dotColor} shrink-0`} />
+          <span className="text-[11px] font-semibold text-[#5A6B87] uppercase tracking-wider">
+            {label}
+          </span>
+        </div>
         {active && (
-          <span className="inline-block w-2.5 h-2.5 rounded-full bg-ink shrink-0 animate-pulse" />
+          <span className="text-[10px] font-medium text-[#102454] bg-[#EDF2F9] px-2 py-0.5 rounded">
+            Filtered
+          </span>
         )}
       </div>
-      <div className="mt-2 text-2xl sm:text-3xl font-heading text-ink font-normal leading-none">
+
+      <div className="text-2xl sm:text-3xl font-bold tracking-tight text-[#102454] tabular-nums font-heading">
         {count}
       </div>
+
+      <p className="text-xs text-[#5A6B87] mt-1.5 leading-normal">
+        {descText}
+      </p>
     </button>
   );
 }

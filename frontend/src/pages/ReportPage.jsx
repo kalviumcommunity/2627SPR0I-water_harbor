@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
-import { AlertCircle, CheckCircle2, ArrowLeft, Send } from 'lucide-react';
+import { AlertCircle, CheckCircle2, ArrowLeft, Send, AlertTriangle, Info, Clock, Building2 } from 'lucide-react';
 import { useApp } from '../context/useApp';
-import WaterDrop from '../components/WaterDrop';
 import Chip from '../components/Chip';
 
 const ISSUE_PRESETS = [
@@ -15,9 +14,9 @@ const ISSUE_PRESETS = [
 ];
 
 /**
- * ReportPage ("/report")
- * Anonymous reporting interface with water point selection,
- * sticker issue chips, live 500-character counter, and friendly duplicate handling.
+ * Premium ReportPage ("/report")
+ * Refined student issue submission workflow with clear input ergonomics,
+ * subtle validation states, and duplicate handling.
  */
 export function ReportPage() {
   const [searchParams] = useSearchParams();
@@ -38,7 +37,7 @@ export function ReportPage() {
     prefilledWpId ||
     (waterPoints.length > 0 ? String(waterPoints[0].id) : '');
 
-  // Handle clicking sticker chips
+  // Handle clicking issue presets chips
   const handleChipClick = (preset) => {
     if (selectedChip === preset) {
       setSelectedChip('');
@@ -54,7 +53,7 @@ export function ReportPage() {
     if (!effectiveWpId) {
       setFeedback({
         type: 'error',
-        message: 'Please select a water point.',
+        message: 'Please select a water point location.',
       });
       return;
     }
@@ -75,12 +74,12 @@ export function ReportPage() {
       if (res?.duplicate) {
         setFeedback({
           type: 'duplicate',
-          message: res.message || 'Someone already reported this water point. Our team is on it!',
+          message: res.message || 'Someone already reported this water point. Our facilities team is on it!',
         });
       } else {
         setFeedback({
           type: 'success',
-          message: 'Thank you! Your report has been noted on the campus board.',
+          message: 'Thank you! Your issue report has been logged and published on the campus directory.',
         });
         setDescription('');
         setSelectedChip('');
@@ -89,7 +88,7 @@ export function ReportPage() {
       if (err.isDuplicate || err.response?.status === 409) {
         setFeedback({
           type: 'duplicate',
-          message: err.response?.data?.detail || 'Someone already reported this water point. Our team is on it!',
+          message: err.response?.data?.detail || 'Someone already reported this water point. Our facilities team is on it!',
         });
       } else {
         setFeedback({
@@ -106,179 +105,196 @@ export function ReportPage() {
   const hasActiveReport = effectiveWpId ? activeReportsMap.has(Number(effectiveWpId)) : false;
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-4 space-y-6">
-      {/* Back button */}
-      <div>
-        <button
-          type="button"
-          onClick={() => navigate('/')}
-          className="inline-flex items-center gap-1.5 text-xs font-bold text-ink hover:text-cobalt cursor-pointer"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to Campus Board</span>
-        </button>
-      </div>
-
-      {/* Main Poster Form Container */}
-      <div className="bg-paper border-ink-3 shadow-hard-lg rounded-2xl p-6 sm:p-8 text-ink relative">
-        {/* Header with Sad Drop */}
-        <div className="flex items-start justify-between gap-4 mb-6">
-          <div>
-            <div className="inline-block px-3 py-1 bg-coral/20 border-2 border-ink rounded-full text-xs font-bold uppercase tracking-wider mb-2 text-ink">
-              Student Helpdesk
-            </div>
-            <h1 className="text-2xl sm:text-4xl font-heading leading-tight">
-              See a sad drop? Tell us.
-            </h1>
-            <p className="mt-1 text-xs sm:text-sm text-ink/80">
-              No account or login needed. Tell us what is wrong and we will flag it for repair.
-            </p>
+    <div className="space-y-6 sm:space-y-8 pb-16">
+      {/* ── Page Hero ───────────────────────────────────────────────────── */}
+      <section className="wh-hero-gradient text-white pt-10 pb-12 px-4 sm:px-6 lg:px-8 border-b border-[#0B1736]">
+        <div className="max-w-3xl mx-auto space-y-2">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-white/10 border border-white/15 rounded-full text-xs font-medium text-[#D6A63C]">
+            <AlertCircle className="w-3.5 h-3.5" />
+            <span>Student Helpdesk</span>
           </div>
-          <WaterDrop status="reported_unavailable" size="lg" className="shrink-0" />
+
+          <h1 className="text-2xl sm:text-3xl font-bold font-heading text-white tracking-tight">
+            Report a Water Point Issue
+          </h1>
+
+          <p className="text-xs sm:text-sm text-[#CBD5E1] max-w-xl leading-relaxed">
+            Spotted a broken, leaking, or empty dispenser? Submit a notice. No account or sign-in required.
+          </p>
+        </div>
+      </section>
+
+      {/* ── Form Container ──────────────────────────────────────────────── */}
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 space-y-4">
+        <div>
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-[#5A6B87] hover:text-[#102454] transition-colors cursor-pointer"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Back to Water Points Directory</span>
+          </button>
         </div>
 
-        {/* Feedback Alerts */}
-        {feedback && (
-          <div
-            role="alert"
-            className={`p-4 rounded-xl border-ink-3 shadow-hard-sm mb-6 flex items-start gap-3 animate-in fade-in duration-150 ${
-              feedback.type === 'success'
-                ? 'bg-mint text-ink'
-                : feedback.type === 'duplicate'
-                ? 'bg-sun text-ink'
-                : 'bg-coral text-white'
-            }`}
-          >
-            {feedback.type === 'success' ? (
-              <CheckCircle2 className="w-5 h-5 shrink-0 text-ink mt-0.5" />
-            ) : (
-              <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-            )}
-            <div className="flex-1 text-xs sm:text-sm font-semibold">
-              <p>{feedback.message}</p>
-              {feedback.type === 'duplicate' && (
-                <p className="mt-1 text-xs font-normal opacity-90">
-                  Facilities staff have already received an active report for this station and are scheduling service.
-                </p>
+        <div className="bg-white border border-[#DFE6F0] rounded-xl shadow-xs p-5 sm:p-7 space-y-5">
+          {/* Feedback Alerts */}
+          {feedback && (
+            <div
+              role="alert"
+              className={`p-3.5 rounded-lg border flex items-start gap-2.5 text-xs animate-in fade-in duration-150 ${
+                feedback.type === 'success'
+                  ? 'bg-[#EBF6EE] border-[#C6E7CF] text-[#15803D]'
+                  : feedback.type === 'duplicate'
+                  ? 'bg-[#FEF7EA] border-[#FCE1B5] text-[#D58A00]'
+                  : 'bg-[#FDF2F2] border-[#F8C9C9] text-[#B91C1C]'
+              }`}
+            >
+              {feedback.type === 'success' ? (
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-[#2F8A57] mt-0.5" />
+              ) : feedback.type === 'duplicate' ? (
+                <AlertTriangle className="w-4 h-4 shrink-0 text-[#D58A00] mt-0.5" />
+              ) : (
+                <AlertCircle className="w-4 h-4 shrink-0 text-[#D94B4B] mt-0.5" />
+              )}
+              <div className="flex-1 font-medium leading-relaxed">
+                {feedback.message}
+                {feedback.type === 'success' && (
+                  <div className="mt-1.5">
+                    <Link
+                      to="/"
+                      className="inline-flex items-center gap-1 font-semibold text-[#102454] hover:underline"
+                    >
+                      <span>Return to Directory →</span>
+                    </Link>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Step 1: Select Water Point */}
+            <div className="space-y-1.5">
+              <label
+                htmlFor="waterpoint-select"
+                className="block text-xs font-semibold uppercase tracking-wider text-[#102454]"
+              >
+                1. Select Water Point <span className="text-[#D94B4B]">*</span>
+              </label>
+
+              <select
+                id="waterpoint-select"
+                value={effectiveWpId}
+                onChange={(e) => {
+                  setSelectedWpId(e.target.value);
+                  setFeedback(null);
+                }}
+                className="w-full px-3 py-2 bg-white text-[#102454] border border-[#DFE6F0] rounded-lg text-xs sm:text-sm font-medium focus:border-[#102454] focus:ring-1 focus:ring-[#102454] cursor-pointer"
+                disabled={isSubmitting}
+              >
+                {waterPoints.map((wp) => (
+                  <option key={wp.id} value={wp.id}>
+                    {wp.name} — {wp.building ? `${wp.building} (${wp.location})` : wp.location}
+                  </option>
+                ))}
+              </select>
+
+              {/* Selected Point Context Card */}
+              {selectedPoint && (
+                <div className="p-2.5 bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg text-xs text-[#5A6B87] flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="w-3.5 h-3.5 text-[#102454] shrink-0" />
+                    <span>
+                      <strong>{selectedPoint.name}</strong> &bull; {selectedPoint.location}
+                    </span>
+                  </div>
+
+                  {hasActiveReport && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-[#FDF2F2] text-[#D94B4B] border border-[#F8C9C9] shrink-0">
+                      Active Notice Exists
+                    </span>
+                  )}
+                </div>
               )}
             </div>
-          </div>
-        )}
 
-        {/* Active report warning if user selects a point that already has a report */}
-        {hasActiveReport && !feedback && (
-          <div className="mb-6 p-3.5 bg-sun/40 border-2 border-ink rounded-xl shadow-hard-sm flex items-start gap-2.5 text-xs">
-            <AlertCircle className="w-4 h-4 text-ink shrink-0 mt-0.5" />
-            <div>
-              <span className="font-bold block">Already has an active report:</span>
-              <span>
-                &ldquo;{activeReportsMap.get(Number(effectiveWpId))?.description}&rdquo;
+            {/* Step 2: Common Issue Chips */}
+            <div className="space-y-1.5">
+              <span className="block text-xs font-semibold uppercase tracking-wider text-[#102454]">
+                2. Common Issue (Optional)
               </span>
+              <div className="flex flex-wrap gap-1.5 pt-0.5">
+                {ISSUE_PRESETS.map((preset) => (
+                  <Chip
+                    key={preset}
+                    label={preset}
+                    selected={selectedChip === preset}
+                    onClick={() => handleChipClick(preset)}
+                    disabled={isSubmitting}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
-        )}
 
-        {/* Report Submission Form */}
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Water Point Picker */}
-          <div>
-            <label
-              htmlFor="waterpoint-select"
-              className="block text-xs font-bold uppercase tracking-wider mb-1.5"
-            >
-              Which water point? <span className="text-coral">*</span>
-            </label>
-            <select
-              id="waterpoint-select"
-              required
-              value={effectiveWpId}
-              onChange={(e) => {
-                setSelectedWpId(e.target.value);
-                setFeedback(null);
-              }}
-              className="w-full py-2.5 px-3 bg-paper text-ink border-2 border-ink rounded-xl text-xs sm:text-sm font-semibold shadow-hard-sm focus:border-cobalt focus:ring-0 cursor-pointer"
-            >
-              <option value="" disabled>
-                Select a campus water point...
-              </option>
-              {waterPoints.map((wp) => (
-                <option key={wp.id} value={wp.id}>
-                  {wp.name} — {wp.building ? `${wp.building} (${wp.location})` : wp.location}
-                </option>
-              ))}
-            </select>
-            {selectedPoint && (
-              <p className="mt-1 text-[11px] text-ink/70">
-                Location: {selectedPoint.location} {selectedPoint.building && `(${selectedPoint.building})`}
-              </p>
-            )}
-          </div>
+            {/* Step 3: Issue Description */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label
+                  htmlFor="issue-description"
+                  className="block text-xs font-semibold uppercase tracking-wider text-[#102454]"
+                >
+                  3. Description <span className="text-[#D94B4B]">*</span>
+                </label>
+                <span className="text-[11px] text-[#8C9CB3]">
+                  {description.length}/500
+                </span>
+              </div>
 
-          {/* Preset Issue Sticker Chips */}
-          <div>
-            <span className="block text-xs font-bold uppercase tracking-wider mb-2">
-              Common issues (click to select):
-            </span>
-            <div className="flex flex-wrap gap-2">
-              {ISSUE_PRESETS.map((preset) => (
-                <Chip
-                  key={preset}
-                  label={preset}
-                  selected={selectedChip === preset}
-                  onClick={() => handleChipClick(preset)}
-                />
-              ))}
+              <textarea
+                id="issue-description"
+                rows={3}
+                maxLength={500}
+                required
+                value={description}
+                onChange={(e) => {
+                  setDescription(e.target.value);
+                  if (selectedChip && e.target.value !== selectedChip) {
+                    setSelectedChip('');
+                  }
+                }}
+                placeholder="Describe what you observed (e.g. Dispenser tap leaking continuously, pressure button jammed, or filter warning light blinking)."
+                className="w-full px-3 py-2 bg-white text-[#102454] border border-[#DFE6F0] rounded-lg text-xs sm:text-sm focus:border-[#102454] focus:ring-1 focus:ring-[#102454] placeholder:text-[#8C9CB3] resize-none"
+                disabled={isSubmitting}
+              />
             </div>
-          </div>
 
-          {/* Description Textarea with Live Character Counter */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label
-                htmlFor="issue-description"
-                className="text-xs font-bold uppercase tracking-wider"
+            {/* Action Bar */}
+            <div className="pt-1 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-1 text-[#8C9CB3]">
+                <Clock className="w-3.5 h-3.5" />
+                <span>Notice publishes immediately to the campus directory</span>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmitting || !description.trim()}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4.5 py-2 rounded-lg bg-[#102454] hover:bg-[#162F6B] text-white font-medium text-xs sm:text-sm shadow-xs transition-colors cursor-pointer disabled:opacity-50"
               >
-                Describe what you noticed <span className="text-coral">*</span>
-              </label>
-              <span
-                className={`text-xs font-mono font-bold ${
-                  description.length >= 450 ? 'text-coral' : 'text-ink/60'
-                }`}
-              >
-                {description.length} / 500
-              </span>
+                <Send className="w-3.5 h-3.5 text-[#D6A63C]" />
+                <span>{isSubmitting ? 'Submitting...' : 'Submit Issue Report'}</span>
+              </button>
             </div>
-            <textarea
-              id="issue-description"
-              required
-              rows={4}
-              maxLength={500}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="e.g. Water is trickling very slowly and tastes metallic, or the chiller is warm."
-              className="w-full p-3 bg-paper text-ink border-2 border-ink rounded-xl text-xs sm:text-sm shadow-hard-sm focus:border-cobalt focus:ring-0 placeholder:text-ink/40"
-            />
-          </div>
+          </form>
+        </div>
 
-          {/* Submit CTA */}
-          <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <Link
-              to="/"
-              className="w-full sm:w-auto text-center px-4 py-2 text-xs font-bold border-2 border-ink rounded-xl bg-paper text-ink hover:bg-sky/60 btn-tactile"
-            >
-              Cancel
-            </Link>
-
-            <button
-              type="submit"
-              disabled={isSubmitting || !effectiveWpId || !description.trim()}
-              className="w-full sm:w-auto px-6 py-2.5 text-xs sm:text-sm font-bold border-2 border-ink rounded-xl bg-coral text-white shadow-hard hover:-translate-y-0.5 btn-tactile cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
-            >
-              <Send className="w-4 h-4" />
-              <span>{isSubmitting ? 'Submitting...' : 'Submit Issue Report'}</span>
-            </button>
-          </div>
-        </form>
+        {/* Guidance Note */}
+        <div className="bg-white border border-[#DFE6F0] rounded-xl p-4 shadow-xs flex items-start gap-2.5 text-xs text-[#5A6B87] leading-relaxed">
+          <Info className="w-4 h-4 text-[#102454] shrink-0 mt-0.5" />
+          <p>
+            When submitted, the water point immediately updates to &ldquo;Reported unavailable&rdquo; on the student board. Facilities staff are notified to dispatch maintenance and record completion notes once tested.
+          </p>
+        </div>
       </div>
     </div>
   );
