@@ -4,18 +4,16 @@ import { Search, Filter, RotateCcw, X, ArrowDown, Wrench, Building2, Droplets } 
 import { useApp } from '../context/useApp';
 import WaterPointCard from '../components/WaterPointCard';
 import StatusTile from '../components/StatusTile';
-import BuildingCard from '../components/BuildingCard';
 
 /**
  * DirectoryPage ("/")
- * Campus water point status directory redesigned according to the Figma specification:
- * 1. Global Navigation (in App.jsx)
+ * Campus water point status directory matching the updated layout specification:
+ * 1. Global Navigation Bar (in App.jsx)
  * 2. Dark Navy Hero Section
- * 3. Campus Overview / Statistics Summary Cards
- * 4. Campus Building Cards
- * 5. Water Point Discovery & Search/Filter Controls
- * 6. Responsive Water Points Grid
- * 7. Supporting Issue-Reporting CTA Section
+ * 3. Campus Overview / Statistics Section
+ * 4. Water Points Directory Section (immediately following Campus Overview)
+ * 5. Supporting Information / Issue-Reporting CTA Section
+ * 6. Global Footer (in App.jsx)
  */
 export function DirectoryPage() {
   const {
@@ -31,37 +29,14 @@ export function DirectoryPage() {
   const [selectedBuilding, setSelectedBuilding] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Extract unique buildings and compute per-building statistics
-  const buildingStats = useMemo(() => {
-    const map = new Map();
-    waterPoints.forEach((wp) => {
-      const bldg = wp.building || 'General Campus';
-      if (!map.has(bldg)) {
-        map.set(bldg, {
-          name: bldg,
-          total: 0,
-          available: 0,
-          reported: 0,
-          none: 0,
-        });
-      }
-      const data = map.get(bldg);
-      data.total += 1;
-      if (activeReportsMap.has(wp.id)) {
-        data.reported += 1;
-      } else if (resolvedReportsMap.has(wp.id)) {
-        data.available += 1;
-      } else {
-        data.none += 1;
-      }
-    });
-
-    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
-  }, [waterPoints, activeReportsMap, resolvedReportsMap]);
-
+  // Extract unique building names for the directory filter dropdown
   const buildingNames = useMemo(() => {
-    return buildingStats.map((b) => b.name);
-  }, [buildingStats]);
+    const set = new Set();
+    waterPoints.forEach((wp) => {
+      if (wp.building) set.add(wp.building);
+    });
+    return Array.from(set).sort();
+  }, [waterPoints]);
 
   // Filtered water points
   const filteredWaterPoints = useMemo(() => {
@@ -104,17 +79,8 @@ export function DirectoryPage() {
     document.getElementById('discovery-section')?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleSelectBuildingCard = (bldgName) => {
-    if (selectedBuilding === bldgName) {
-      setSelectedBuilding('ALL');
-    } else {
-      setSelectedBuilding(bldgName);
-      scrollToDiscovery();
-    }
-  };
-
   return (
-    <div className="space-y-12 pb-16">
+    <div className="space-y-10 pb-16">
       {/* ── 1. Dark Navy Hero Section ───────────────────────────────────── */}
       <section className="relative wh-hero-gradient text-white pt-16 pb-20 px-4 sm:px-6 lg:px-8 border-b border-[#0B1736]">
         <div className="max-w-7xl mx-auto text-center space-y-5">
@@ -157,7 +123,7 @@ export function DirectoryPage() {
         </div>
       </section>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
         {/* ── 2. Campus Overview / Statistics Section ───────────────────── */}
         <section aria-label="Campus Overview Statistics">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
@@ -214,50 +180,8 @@ export function DirectoryPage() {
           </div>
         </section>
 
-        {/* ── 3. Campus Building Cards Section ───────────────────────────── */}
-        {buildingStats.length > 0 && (
-          <section aria-label="Campus Buildings Overview">
-            <div className="flex items-center justify-between gap-3 mb-4">
-              <div>
-                <h2 className="text-xl font-bold font-heading text-[#102454]">
-                  Campus Buildings
-                </h2>
-                <p className="text-xs sm:text-sm text-[#71809B]">
-                  Dispenser availability and health organized by facility
-                </p>
-              </div>
-
-              {selectedBuilding !== 'ALL' && (
-                <button
-                  type="button"
-                  onClick={() => setSelectedBuilding('ALL')}
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#102454] hover:underline cursor-pointer"
-                >
-                  <X className="w-3.5 h-3.5" />
-                  <span>Clear building filter</span>
-                </button>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {buildingStats.map((b) => (
-                <BuildingCard
-                  key={b.name}
-                  buildingName={b.name}
-                  totalPoints={b.total}
-                  availableCount={b.available}
-                  reportedCount={b.reported}
-                  noneCount={b.none}
-                  isSelected={selectedBuilding === b.name}
-                  onSelect={() => handleSelectBuildingCard(b.name)}
-                />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* ── 4. Water Point Discovery & Filter Controls ────────────────── */}
-        <section id="discovery-section" aria-label="Water Points Discovery" className="space-y-6">
+        {/* ── 3. Water Points Directory (Directly following Campus Overview) ── */}
+        <section id="discovery-section" aria-label="Water Points Directory" className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h2 className="text-xl font-bold font-heading text-[#102454]">
@@ -408,7 +332,7 @@ export function DirectoryPage() {
             </div>
           )}
 
-          {/* ── 5. Responsive Water Points Grid ─────────────────────────── */}
+          {/* Responsive Water Points Grid */}
           {loading ? (
             /* Loading Skeleton Cards */
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -466,7 +390,7 @@ export function DirectoryPage() {
           )}
         </section>
 
-        {/* ── 6. Supporting Information / Report Issue CTA ───────────────── */}
+        {/* ── 4. Supporting Information / Report Issue CTA ───────────────── */}
         <section aria-label="Issue Reporting Callout">
           <div className="bg-white rounded-2xl border border-[#DFE6F0] shadow-xs p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-start gap-4">
