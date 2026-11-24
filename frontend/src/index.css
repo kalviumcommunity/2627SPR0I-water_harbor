@@ -3,52 +3,48 @@
 @theme {
   --color-navy: #102454;
   --color-navy-dark: #0b1736;
-  --color-navy-light: #1a367e;
-  --color-navy-soft: #edf2f9;
+  --color-navy-light: #162f6b;
+  --color-navy-subtle: #edf2f9;
 
-  --color-bg-page: #f3f6fc;
+  --color-bg-canvas: #f3f6fc;
   --color-surface: #ffffff;
-  --color-border-subtle: #dfe6f0;
+  --color-border-ui: #dfe6f0;
+  --color-border-subtle: #edf2f7;
 
   --color-gold: #d6a63c;
-  --color-gold-hover: #c2952e;
-  --color-gold-soft: #fef8eb;
+  --color-gold-hover: #c4962e;
+  --color-gold-subtle: #fef8eb;
 
-  --color-green-status: #2f8a57;
-  --color-green-soft: #ebf6ee;
-  --color-green-border: #d2edd9;
+  --color-status-green: #2f8a57;
+  --color-status-green-bg: #ebf6ee;
+  --color-status-green-border: #c6e7cf;
 
-  --color-amber-status: #d58a00;
-  --color-amber-soft: #fef7ea;
-  --color-amber-border: #fce7c5;
+  --color-status-amber: #d58a00;
+  --color-status-amber-bg: #fef7ea;
+  --color-status-amber-border: #fce1b5;
 
-  --color-red-status: #d94b4b;
-  --color-red-soft: #fdf2f2;
-  --color-red-border: #f9d3d3;
+  --color-status-red: #d94b4b;
+  --color-status-red-bg: #fdf2f2;
+  --color-status-red-border: #f8c9c9;
 
-  --color-slate-text: #71809b;
-  --color-slate-muted: #94a3b8;
-  --color-slate-dark: #334155;
+  --color-text-main: #102454;
+  --color-text-secondary: #5a6b87;
+  --color-text-muted: #8c9cb3;
 
-  --font-heading: "Plus Jakarta Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-heading: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-
-  --shadow-card: 0 1px 3px rgba(16, 36, 84, 0.05), 0 1px 2px rgba(16, 36, 84, 0.03);
-  --shadow-card-hover: 0 8px 24px rgba(16, 36, 84, 0.08), 0 2px 6px rgba(16, 36, 84, 0.04);
 }
 
 :root {
   --navy: #102454;
   --navy-dark: #0b1736;
-  --navy-light: #1a367e;
-  --bg-page: #f3f6fc;
-  --surface: #ffffff;
-  --border: #dfe6f0;
+  --bg-canvas: #f3f6fc;
+  --border-ui: #dfe6f0;
   --gold: #d6a63c;
   --green: #2f8a57;
   --amber: #d58a00;
   --red: #d94b4b;
-  --slate: #71809b;
+  --slate: #5a6b87;
 }
 
 body {
@@ -60,66 +56,83 @@ body {
   font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.011em;
 }
 
 h1, h2, h3, h4, h5, h6, .font-heading {
-  font-family: "Plus Jakarta Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.025em;
 }
 
-/* Reusable card styling matching Figma reference */
+/* Premium Card Architecture */
 .wh-card {
   background-color: #ffffff;
   border: 1px solid #dfe6f0;
-  border-radius: 14px;
-  box-shadow: 0 1px 3px rgba(16, 36, 84, 0.04), 0 1px 2px rgba(16, 36, 84, 0.02);
-  transition: all 0.2s ease-in-out;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(16, 36, 84, 0.04);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .wh-card:hover {
-  box-shadow: 0 6px 20px rgba(16, 36, 84, 0.07), 0 2px 6px rgba(16, 36, 84, 0.03);
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(16, 36, 84, 0.06);
 }
 
-/* Hero Section Gradient Background */
+/* Hero Section Gradient: refined dark navy depth */
 .wh-hero-gradient {
-  background: linear-gradient(135deg, #0b1736 0%, #102454 60%, #183375 100%);
+  background: linear-gradient(145deg, #09132d 0%, #102454 55%, #15326f 100%);
 }
 
-/* Subtle Glass / Backdrop utility */
-.wh-glass-modal {
-  background-color: rgba(255, 255, 255, 0.98);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+/* Subtle Interactive Controls */
+.wh-btn-primary {
+  background-color: #d6a63c;
+  color: #0b1736;
+  font-weight: 600;
+  border-radius: 9px;
+  transition: background-color 0.15s ease, transform 0.05s ease;
 }
 
-/* Status Pill Helpers */
-.wh-badge-available {
-  background-color: #ebf6ee;
-  color: #2f8a57;
-  border: 1px solid #d2edd9;
+.wh-btn-primary:hover {
+  background-color: #c4962e;
 }
 
-.wh-badge-warning {
-  background-color: #fef7ea;
-  color: #d58a00;
-  border: 1px solid #fce7c5;
+.wh-btn-primary:active {
+  transform: translateY(1px);
 }
 
-.wh-badge-unavailable {
-  background-color: #fdf2f2;
-  color: #d94b4b;
-  border: 1px solid #f9d3d3;
+.wh-btn-navy {
+  background-color: #102454;
+  color: #ffffff;
+  font-weight: 600;
+  border-radius: 9px;
+  transition: background-color 0.15s ease, transform 0.05s ease;
 }
 
-.wh-badge-neutral {
-  background-color: #f1f5f9;
-  color: #71809b;
-  border: 1px solid #e2e8f0;
+.wh-btn-navy:hover {
+  background-color: #162f6b;
 }
 
-/* Smooth Focus Rings */
+.wh-btn-navy:active {
+  transform: translateY(1px);
+}
+
+.wh-btn-secondary {
+  background-color: #ffffff;
+  color: #102454;
+  border: 1px solid #dfe6f0;
+  font-weight: 500;
+  border-radius: 9px;
+  transition: all 0.15s ease;
+}
+
+.wh-btn-secondary:hover {
+  background-color: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+/* Accessible focus ring */
 :focus-visible {
-  outline: 2px solid #d6a63c;
+  outline: 2px solid #102454;
   outline-offset: 2px;
 }

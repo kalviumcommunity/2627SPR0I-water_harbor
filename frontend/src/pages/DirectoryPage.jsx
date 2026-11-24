@@ -6,14 +6,12 @@ import WaterPointCard from '../components/WaterPointCard';
 import StatusTile from '../components/StatusTile';
 
 /**
- * DirectoryPage ("/")
- * Campus water point status directory matching the updated layout specification:
- * 1. Global Navigation Bar (in App.jsx)
- * 2. Dark Navy Hero Section
- * 3. Campus Overview / Statistics Section
- * 4. Water Points Directory Section (immediately following Campus Overview)
- * 5. Supporting Information / Issue-Reporting CTA Section
- * 6. Global Footer (in App.jsx)
+ * Premium DirectoryPage ("/")
+ * Designed with SaaS-grade restraint, clear visual hierarchy, and immediate interactivity:
+ * 1. Dark Navy Hero Section (compact & purposeful)
+ * 2. Campus Overview Metrics (clean tabular status tiles)
+ * 3. Water Points Directory (segmented filters, search toolbar, scannable cards)
+ * 4. Supporting Issue-Reporting CTA Section
  */
 export function DirectoryPage() {
   const {
@@ -80,82 +78,77 @@ export function DirectoryPage() {
   };
 
   return (
-    <div className="space-y-10 pb-16">
-      {/* ── 1. Dark Navy Hero Section ───────────────────────────────────── */}
-      <section className="relative wh-hero-gradient text-white pt-16 pb-20 px-4 sm:px-6 lg:px-8 border-b border-[#0B1736]">
-        <div className="max-w-7xl mx-auto text-center space-y-5">
-          {/* Small uppercase introductory label */}
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 border border-white/20 rounded-full text-xs font-semibold uppercase tracking-wider text-[#D6A63C]">
+    <div className="space-y-8 sm:space-y-10 pb-16">
+      {/* ── 1. Hero Section ─────────────────────────────────────────────── */}
+      <section className="relative wh-hero-gradient text-white pt-14 pb-16 px-4 sm:px-6 lg:px-8 border-b border-[#0B1736]">
+        <div className="max-w-4xl mx-auto text-center space-y-4">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-white/10 border border-white/15 rounded-full text-xs font-medium text-[#D6A63C]">
             <Droplets className="w-3.5 h-3.5" />
             <span>Campus Water Point Management</span>
           </div>
 
-          {/* Large white heading */}
-          <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold font-heading text-white max-w-4xl mx-auto leading-tight sm:leading-none tracking-tight">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold font-heading text-white tracking-tight leading-tight">
             Thirsty? Check before you trek.
           </h1>
 
-          {/* Short supporting description */}
-          <p className="text-sm sm:text-base md:text-lg text-[#CBD5E1] max-w-2xl mx-auto font-normal leading-relaxed">
-            Real status updates reported by campus students and confirmed by facilities operations.
-            Find working hydration stations before walking across campus.
+          <p className="text-sm sm:text-base text-[#CBD5E1] max-w-xl mx-auto font-normal leading-relaxed">
+            Real status updates reported by students and confirmed by campus facilities. Find working hydration stations across campus.
           </p>
 
-          {/* Hero Action Buttons */}
-          <div className="pt-4 flex flex-wrap items-center justify-center gap-3">
+          <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
             <button
               type="button"
               onClick={scrollToDiscovery}
-              className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[#D6A63C] hover:bg-[#C2952E] text-[#102454] font-bold text-sm shadow-md transition-all cursor-pointer"
+              className="wh-btn-primary px-4 py-2 text-xs sm:text-sm inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
             >
               <span>Find a Water Point</span>
-              <ArrowDown className="w-4 h-4" />
+              <ArrowDown className="w-3.5 h-3.5" />
             </button>
 
             <Link
               to="/report"
-              className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold text-sm transition-colors"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs sm:text-sm font-medium text-white/90 hover:text-white bg-white/5 hover:bg-white/10 border border-white/15 rounded-lg transition-colors"
             >
-              <Wrench className="w-4 h-4 text-[#D6A63C]" />
+              <Wrench className="w-3.5 h-3.5 text-[#D6A63C]" />
               <span>Report an Issue</span>
             </Link>
           </div>
         </div>
       </section>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 sm:space-y-10">
         {/* ── 2. Campus Overview / Statistics Section ───────────────────── */}
         <section aria-label="Campus Overview Statistics">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-3">
             <div>
-              <h2 className="text-xl font-bold font-heading text-[#102454]">
+              <h2 className="text-base sm:text-lg font-bold font-heading text-[#102454]">
                 Campus Overview
               </h2>
-              <p className="text-xs sm:text-sm text-[#71809B]">
-                Live summary of monitored hydration points across campus
+              <p className="text-xs text-[#5A6B87]">
+                Live availability status across campus facilities
               </p>
             </div>
-            <div className="text-xs text-[#71809B] font-medium">
-              Click any metric card to filter the directory
+            <div className="text-[11px] text-[#8C9CB3] font-medium hidden sm:block">
+              Click any metric to filter the directory
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <StatusTile
               id="filter-tile-all"
               label="Total Water Points"
               count={stats.total}
               type="all"
-              description="Monitored across all buildings"
+              description="Monitored across campus"
               active={activeFilter === 'all'}
               onClick={() => setActiveFilter('all')}
             />
             <StatusTile
               id="filter-tile-resolved"
-              label="Staff-Confirmed Resolved"
+              label="Staff Resolved"
               count={stats.staffConfirmedResolved}
               type="resolved"
-              description="Inspected and verified functional"
+              description="Inspected and functional"
               active={activeFilter === 'resolved'}
               onClick={() => setActiveFilter('resolved')}
             />
@@ -173,7 +166,7 @@ export function DirectoryPage() {
               label="No Recent Report"
               count={stats.noRecentReport}
               type="none"
-              description="No active reports in cycle"
+              description="Standard campus routine"
               active={activeFilter === 'none'}
               onClick={() => setActiveFilter('none')}
             />
@@ -181,26 +174,31 @@ export function DirectoryPage() {
         </section>
 
         {/* ── 3. Water Points Directory (Directly following Campus Overview) ── */}
-        <section id="discovery-section" aria-label="Water Points Directory" className="space-y-6">
+        <section id="discovery-section" aria-label="Water Points Directory" className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h2 className="text-xl font-bold font-heading text-[#102454]">
-                Water Points Directory
-              </h2>
-              <p className="text-xs sm:text-sm text-[#71809B]">
+              <div className="flex items-center gap-2">
+                <h2 className="text-base sm:text-lg font-bold font-heading text-[#102454]">
+                  Water Points Directory
+                </h2>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#EDF2F9] text-[#102454]">
+                  {waterPoints.length}
+                </span>
+              </div>
+              <p className="text-xs text-[#5A6B87]">
                 Search individual stations, filter by status, and review recent maintenance
               </p>
             </div>
 
-            {/* Quick Status Pill Tabs */}
-            <div className="flex items-center flex-wrap gap-1.5 bg-white p-1 rounded-xl border border-[#DFE6F0] shadow-xs">
+            {/* Segmented Status Pill Control */}
+            <div className="inline-flex items-center p-1 bg-[#F1F5F9] border border-[#DFE6F0] rounded-lg text-xs">
               <button
                 type="button"
                 onClick={() => setActiveFilter('all')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                className={`px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${
                   activeFilter === 'all'
-                    ? 'bg-[#102454] text-white shadow-xs'
-                    : 'text-[#71809B] hover:text-[#102454]'
+                    ? 'bg-white text-[#102454] font-semibold shadow-xs'
+                    : 'text-[#5A6B87] hover:text-[#102454]'
                 }`}
               >
                 All ({stats.total})
@@ -208,10 +206,10 @@ export function DirectoryPage() {
               <button
                 type="button"
                 onClick={() => setActiveFilter('reported')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                className={`px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${
                   activeFilter === 'reported'
-                    ? 'bg-[#D94B4B] text-white shadow-xs'
-                    : 'text-[#71809B] hover:text-[#D94B4B]'
+                    ? 'bg-white text-[#D94B4B] font-semibold shadow-xs'
+                    : 'text-[#5A6B87] hover:text-[#D94B4B]'
                 }`}
               >
                 Reported ({stats.reportedUnavailable})
@@ -219,10 +217,10 @@ export function DirectoryPage() {
               <button
                 type="button"
                 onClick={() => setActiveFilter('resolved')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                className={`px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${
                   activeFilter === 'resolved'
-                    ? 'bg-[#2F8A57] text-white shadow-xs'
-                    : 'text-[#71809B] hover:text-[#2F8A57]'
+                    ? 'bg-white text-[#2F8A57] font-semibold shadow-xs'
+                    : 'text-[#5A6B87] hover:text-[#2F8A57]'
                 }`}
               >
                 Resolved ({stats.staffConfirmedResolved})
@@ -230,10 +228,10 @@ export function DirectoryPage() {
               <button
                 type="button"
                 onClick={() => setActiveFilter('none')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                className={`px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${
                   activeFilter === 'none'
-                    ? 'bg-[#71809B] text-white shadow-xs'
-                    : 'text-[#71809B] hover:text-[#102454]'
+                    ? 'bg-white text-[#102454] font-semibold shadow-xs'
+                    : 'text-[#5A6B87] hover:text-[#102454]'
                 }`}
               >
                 No Report ({stats.noRecentReport})
@@ -241,27 +239,27 @@ export function DirectoryPage() {
             </div>
           </div>
 
-          {/* Search Bar + Building Dropdown + Refresh */}
-          <div className="bg-white rounded-xl border border-[#DFE6F0] shadow-xs p-3 sm:p-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          {/* Integrated Control Toolbar */}
+          <div className="bg-white rounded-xl border border-[#DFE6F0] p-2.5 sm:p-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shadow-xs">
             {/* Search Input */}
             <div className="relative flex-1">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94A3B8] pointer-events-none" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8C9CB3] pointer-events-none" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by water point name, location, or floor..."
+                placeholder="Search by dispenser name, room, or building..."
                 aria-label="Search water points"
-                className="w-full pl-10 pr-9 py-2.5 bg-[#F8FAFC] text-[#102454] border border-[#DFE6F0] rounded-lg text-xs sm:text-sm focus:bg-white focus:border-[#102454] focus:ring-1 focus:ring-[#102454] placeholder:text-[#94A3B8] transition-colors"
+                className="w-full pl-9 pr-8 py-2 bg-[#F8FAFC] text-[#102454] border border-[#DFE6F0] rounded-lg text-xs sm:text-sm focus:bg-white focus:border-[#102454] focus:ring-1 focus:ring-[#102454] placeholder:text-[#8C9CB3] transition-colors"
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
                   aria-label="Clear search query"
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-[#94A3B8] hover:text-[#102454] hover:bg-[#F1F5F9] cursor-pointer"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded text-[#8C9CB3] hover:text-[#102454] hover:bg-[#F1F5F9] cursor-pointer"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
@@ -273,7 +271,7 @@ export function DirectoryPage() {
                   Filter by building
                 </label>
                 <div className="flex items-center w-full sm:w-auto">
-                  <span className="hidden lg:inline-flex items-center gap-1 mr-2 text-xs font-semibold text-[#71809B]">
+                  <span className="hidden lg:inline-flex items-center gap-1 mr-2 text-xs font-medium text-[#5A6B87]">
                     <Building2 className="w-3.5 h-3.5" />
                     Facility:
                   </span>
@@ -281,7 +279,7 @@ export function DirectoryPage() {
                     id="building-select"
                     value={selectedBuilding}
                     onChange={(e) => setSelectedBuilding(e.target.value)}
-                    className="w-full sm:w-auto py-2.5 px-3 bg-[#F8FAFC] text-[#102454] border border-[#DFE6F0] rounded-lg text-xs sm:text-sm font-semibold focus:bg-white focus:border-[#102454] focus:ring-1 focus:ring-[#102454] cursor-pointer"
+                    className="w-full sm:w-auto py-2 px-3 bg-[#F8FAFC] text-[#102454] border border-[#DFE6F0] rounded-lg text-xs font-medium focus:bg-white focus:border-[#102454] focus:ring-1 focus:ring-[#102454] cursor-pointer"
                   >
                     <option value="ALL">All Buildings</option>
                     {buildingNames.map((name) => (
@@ -294,24 +292,24 @@ export function DirectoryPage() {
               </div>
             )}
 
-            {/* Refresh Data Button */}
+            {/* Refresh Button */}
             <button
               type="button"
               onClick={refreshData}
               title="Refresh live status from API"
               aria-label="Refresh status data"
-              className="p-2.5 bg-[#F8FAFC] hover:bg-[#EDF2F9] border border-[#DFE6F0] rounded-lg text-[#102454] transition-colors cursor-pointer flex items-center justify-center shrink-0"
+              className="p-2 bg-[#F8FAFC] hover:bg-[#EDF2F9] border border-[#DFE6F0] rounded-lg text-[#102454] transition-colors cursor-pointer flex items-center justify-center shrink-0"
             >
-              <RotateCcw className="w-4 h-4" />
+              <RotateCcw className="w-3.5 h-3.5" />
             </button>
           </div>
 
-          {/* Showing Count Summary & Reset Action */}
+          {/* Showing Count Summary & Reset Link */}
           {!loading && (
-            <div className="flex items-center justify-between text-xs font-medium text-[#71809B] px-1">
+            <div className="flex items-center justify-between text-xs text-[#5A6B87] px-1">
               <span>
                 Showing <strong className="text-[#102454] font-semibold">{filteredWaterPoints.length}</strong> of{' '}
-                {waterPoints.length} water stations
+                {waterPoints.length} stations
                 {selectedBuilding !== 'ALL' && ` in ${selectedBuilding}`}
               </span>
 
@@ -325,43 +323,41 @@ export function DirectoryPage() {
                   }}
                   className="inline-flex items-center gap-1 text-xs font-semibold text-[#D94B4B] hover:underline cursor-pointer"
                 >
-                  <X className="w-3.5 h-3.5" />
-                  <span>Reset all filters</span>
+                  <X className="w-3 h-3" />
+                  <span>Reset filters</span>
                 </button>
               )}
             </div>
           )}
 
-          {/* Responsive Water Points Grid */}
+          {/* Water Points Grid */}
           {loading ? (
-            /* Loading Skeleton Cards */
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {[1, 2, 3, 4, 5, 6].map((n) => (
                 <div
                   key={n}
-                  className="bg-white border border-[#DFE6F0] rounded-xl p-6 shadow-xs animate-pulse space-y-4"
+                  className="bg-white border border-[#DFE6F0] rounded-xl p-5 shadow-xs animate-pulse space-y-3"
                 >
                   <div className="flex justify-between items-center">
-                    <div className="w-20 h-5 bg-[#F1F5F9] rounded-md" />
-                    <div className="w-24 h-5 bg-[#F1F5F9] rounded-full" />
+                    <div className="w-16 h-4 bg-[#F1F5F9] rounded" />
+                    <div className="w-20 h-4 bg-[#F1F5F9] rounded-full" />
                   </div>
-                  <div className="w-3/4 h-6 bg-[#F1F5F9] rounded-md" />
-                  <div className="w-1/2 h-4 bg-[#F1F5F9] rounded-md" />
-                  <div className="w-full h-12 bg-[#F1F5F9] rounded-lg" />
+                  <div className="w-3/4 h-5 bg-[#F1F5F9] rounded" />
+                  <div className="w-1/2 h-3.5 bg-[#F1F5F9] rounded" />
+                  <div className="w-full h-10 bg-[#F1F5F9] rounded-lg" />
                 </div>
               ))}
             </div>
           ) : filteredWaterPoints.length === 0 ? (
-            /* Empty State */
-            <div className="text-center py-16 px-4 bg-white border border-[#DFE6F0] rounded-xl shadow-xs max-w-md mx-auto space-y-3">
-              <div className="w-12 h-12 rounded-full bg-[#F3F6FC] border border-[#DFE6F0] flex items-center justify-center mx-auto text-[#71809B]">
-                <Filter className="w-5 h-5" />
+            <div className="text-center py-14 px-4 bg-white border border-[#DFE6F0] rounded-xl shadow-xs max-w-sm mx-auto space-y-2.5">
+              <div className="w-10 h-10 rounded-full bg-[#F3F6FC] border border-[#DFE6F0] flex items-center justify-center mx-auto text-[#5A6B87]">
+                <Filter className="w-4 h-4" />
               </div>
-              <h3 className="text-lg font-bold font-heading text-[#102454]">
-                No matching water points found
+              <h3 className="text-sm font-bold font-heading text-[#102454]">
+                No matching water points
               </h3>
-              <p className="text-xs sm:text-sm text-[#71809B] max-w-xs mx-auto">
-                No dispensers match your current search query or active filter criteria.
+              <p className="text-xs text-[#5A6B87]">
+                No stations match your current search query or active filter settings.
               </p>
               <button
                 type="button"
@@ -370,14 +366,13 @@ export function DirectoryPage() {
                   setSelectedBuilding('ALL');
                   setSearchQuery('');
                 }}
-                className="mt-2 px-4 py-2 bg-[#102454] hover:bg-[#183375] text-white text-xs sm:text-sm font-semibold rounded-lg transition-colors cursor-pointer"
+                className="mt-1 px-3.5 py-1.5 bg-[#102454] hover:bg-[#162F6B] text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
               >
                 Clear all filters
               </button>
             </div>
           ) : (
-            /* Water Point Cards Grid */
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
               {filteredWaterPoints.map((wp) => (
                 <WaterPointCard
                   key={wp.id}
@@ -390,28 +385,23 @@ export function DirectoryPage() {
           )}
         </section>
 
-        {/* ── 4. Supporting Information / Report Issue CTA ───────────────── */}
+        {/* ── 4. Supporting Information / Report Issue Callout ───────────── */}
         <section aria-label="Issue Reporting Callout">
-          <div className="bg-white rounded-2xl border border-[#DFE6F0] shadow-xs p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-xl bg-[#EDF2F9] border border-[#DFE6F0] flex items-center justify-center text-[#102454] shrink-0">
-                <Wrench className="w-6 h-6 text-[#102454]" />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold font-heading text-[#102454]">
-                  Notice an issue with a campus water dispenser?
-                </h3>
-                <p className="text-xs sm:text-sm text-[#71809B] max-w-xl mt-1 leading-relaxed">
-                  Help fellow students! Submit an anonymous report when a station is warm, leaking, low on pressure, or empty. Facilities operations prioritize repairs based on verified student notices.
-                </p>
-              </div>
+          <div className="bg-white rounded-xl border border-[#DFE6F0] p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
+            <div className="space-y-1">
+              <h3 className="text-sm font-bold font-heading text-[#102454]">
+                Notice an issue with a campus water dispenser?
+              </h3>
+              <p className="text-xs text-[#5A6B87] max-w-xl leading-relaxed">
+                Submit an anonymous report when a station is warm, leaking, or empty. Facilities operations prioritize maintenance based on verified notices.
+              </p>
             </div>
 
             <Link
               to="/report"
-              className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[#102454] hover:bg-[#183375] text-white font-bold text-sm shadow-xs transition-colors shrink-0"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#102454] hover:bg-[#162F6B] text-white font-medium text-xs shadow-xs transition-colors shrink-0"
             >
-              <Wrench className="w-4 h-4 text-[#D6A63C]" />
+              <Wrench className="w-3.5 h-3.5 text-[#D6A63C]" />
               <span>Submit Issue Report</span>
             </Link>
           </div>

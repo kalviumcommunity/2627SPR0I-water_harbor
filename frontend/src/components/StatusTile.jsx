@@ -1,12 +1,9 @@
-import { Droplets, CheckCircle2, AlertTriangle, HelpCircle } from 'lucide-react';
-
 /**
- * Clean Campus Overview Metric Card matching the Figma reference:
- * - White card with subtle border and understated shadow
- * - Clean icon badge with color-coded status indicator
- * - Prominent numerical metric in navy
- * - Muted descriptive label and supporting description
- * - Clickable to filter directory
+ * Restrained Campus Overview Metric Card:
+ * - Crisp white surface with 1px subtle border
+ * - Status dot indicator (Green, Red, Amber, Navy)
+ * - Tabular numerical figures
+ * - Informative micro-copy without noisy decorative gradients
  */
 export function StatusTile({
   label,
@@ -17,23 +14,19 @@ export function StatusTile({
   onClick,
   id,
 }) {
-  // Determine icon and color tokens based on status type
-  let iconComponent = <Droplets className="w-5 h-5 text-[#102454]" />;
-  let iconBg = 'bg-[#EDF2F9]';
-  let defaultDesc = 'Across campus facilities';
+  // Status indicator dot colors
+  let dotColor = 'bg-[#102454]';
+  let defaultDesc = 'Across all campus facilities';
 
   if (type === 'reported' || label.toLowerCase().includes('unavailable')) {
-    iconComponent = <AlertTriangle className="w-5 h-5 text-[#D94B4B]" />;
-    iconBg = 'bg-[#FDF2F2]';
-    defaultDesc = 'Issues reported by students';
+    dotColor = 'bg-[#D94B4B]';
+    defaultDesc = 'Student reports awaiting repair';
   } else if (type === 'resolved' || label.toLowerCase().includes('resolved')) {
-    iconComponent = <CheckCircle2 className="w-5 h-5 text-[#2F8A57]" />;
-    iconBg = 'bg-[#EBF6EE]';
-    defaultDesc = 'Repaired & verified by staff';
+    dotColor = 'bg-[#2F8A57]';
+    defaultDesc = 'Verified ready for use';
   } else if (type === 'none' || label.toLowerCase().includes('no recent')) {
-    iconComponent = <HelpCircle className="w-5 h-5 text-[#D58A00]" />;
-    iconBg = 'bg-[#FEF7EA]';
-    defaultDesc = 'Awaiting recent reports';
+    dotColor = 'bg-[#D58A00]';
+    defaultDesc = 'Routine campus status active';
   }
 
   const descText = description || defaultDesc;
@@ -44,34 +37,33 @@ export function StatusTile({
       id={id}
       onClick={onClick}
       aria-pressed={active}
-      className={`group relative text-left w-full bg-white rounded-xl p-5 border transition-all duration-200 cursor-pointer ${
+      className={`group relative text-left w-full bg-white rounded-xl p-4 sm:p-5 border transition-all duration-150 cursor-pointer ${
         active
-          ? 'border-[#102454] ring-2 ring-[#102454]/15 shadow-sm'
-          : 'border-[#DFE6F0] hover:border-[#CBD5E1] shadow-xs hover:shadow-sm'
+          ? 'border-[#102454] shadow-xs bg-[#FAFBFD]'
+          : 'border-[#DFE6F0] hover:border-[#CBD5E1] shadow-xs'
       }`}
     >
-      <div className="flex items-center justify-between mb-3">
-        <div className={`w-10 h-10 rounded-lg ${iconBg} flex items-center justify-center transition-transform group-hover:scale-105`}>
-          {iconComponent}
+      <div className="flex items-center justify-between mb-2.5">
+        <div className="flex items-center gap-2">
+          <span className={`w-2 h-2 rounded-full ${dotColor} shrink-0`} />
+          <span className="text-[11px] font-semibold text-[#5A6B87] uppercase tracking-wider">
+            {label}
+          </span>
         </div>
         {active && (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#102454] text-white">
-            Active Filter
+          <span className="text-[10px] font-medium text-[#102454] bg-[#EDF2F9] px-2 py-0.5 rounded">
+            Filtered
           </span>
         )}
       </div>
 
-      <div className="space-y-1">
-        <span className="block text-xs font-semibold text-[#71809B] uppercase tracking-wider">
-          {label}
-        </span>
-        <div className="text-3xl font-extrabold text-[#102454] font-heading tracking-tight leading-none">
-          {count}
-        </div>
-        <p className="text-xs text-[#71809B] leading-relaxed pt-1">
-          {descText}
-        </p>
+      <div className="text-2xl sm:text-3xl font-bold tracking-tight text-[#102454] tabular-nums font-heading">
+        {count}
       </div>
+
+      <p className="text-xs text-[#5A6B87] mt-1.5 leading-normal">
+        {descText}
+      </p>
     </button>
   );
 }
