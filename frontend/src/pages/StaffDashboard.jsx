@@ -1,14 +1,18 @@
 import { useState, useMemo } from 'react';
-import { KeyRound, User, LogOut, CheckCircle2, Clock, Wrench, ShieldAlert } from 'lucide-react';
+import { KeyRound, User, LogOut, CheckCircle2, Clock, Wrench, ShieldAlert, AlertTriangle, Building2, MapPin } from 'lucide-react';
 import { useApp } from '../context/useApp';
-import WaterDrop from '../components/WaterDrop';
 import RepairDialog from '../components/RepairDialog';
 import { formatRelativeTime, formatDateTime } from '../utils/formatTime';
 
 /**
  * StaffDashboard ("/staff")
- * Facilities staff operations portal with simple passkey gate,
- * "N to fix" queue (oldest first), repair logging, and completed repairs ledger.
+ * Facilities operations portal redesigned to strictly match the Water Harbour design system:
+ * - Page-specific navy hero
+ * - Clean authentication card
+ * - Summary metric cards
+ * - Unresolved issue queue (sorted oldest first)
+ * - Modal dialog for logging resolution notes
+ * - Completed repairs ledger (sorted newest first)
  */
 export function StaffDashboard() {
   const {
@@ -23,7 +27,7 @@ export function StaffDashboard() {
     return Boolean(sessionStorage.getItem('staff_name') && sessionStorage.getItem('staff_access_key'));
   });
 
-  // Gate input form state
+  // Authentication form state
   const [inputName, setInputName] = useState('');
   const [inputKey, setInputKey] = useState('');
   const [authError, setAuthError] = useState('');
@@ -88,252 +92,328 @@ export function StaffDashboard() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-4 space-y-8">
-      {/* Header Banner */}
-      <div className="bg-paper border-ink-3 shadow-hard-lg rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-        <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-mint/40 border-2 border-ink rounded-full text-xs font-bold uppercase tracking-wider mb-2">
-            <Wrench className="w-3.5 h-3.5 text-ink" />
-            <span>Facilities Operations</span>
-          </div>
-          <h1 className="text-2xl sm:text-4xl font-heading leading-tight">
-            Facilities Staff Desk
-          </h1>
-          <p className="mt-1 text-xs sm:text-sm text-ink/80 max-w-lg">
-            Review active issues reported by campus community members and record completed maintenance.
-          </p>
-        </div>
-
-        {isAuthenticated ? (
-          <div className="bg-paper border-ink-3 shadow-hard-sm rounded-2xl p-4 shrink-0 text-right">
-            <div className="flex items-center gap-2 justify-end text-sm font-bold text-ink mb-1">
-              <User className="w-4 h-4 text-cobalt" />
-              <span>{staffName}</span>
-            </div>
-            <p className="text-xs text-ink/70 mb-3 font-medium">Active Staff Session</p>
-            <button
-              type="button"
-              onClick={handleSignOut}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-coral bg-coral/10 hover:bg-coral hover:text-white rounded-xl border-2 border-coral transition-colors btn-tactile cursor-pointer shadow-hard-sm"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span>Sign out</span>
-            </button>
-          </div>
-        ) : (
-          <div className="shrink-0">
-            <WaterDrop status="staff_confirmed_resolved" size="lg" />
-          </div>
-        )}
-      </div>
-
-      {/* Staff Authentication Gate if not signed in */}
-      {!isAuthenticated ? (
-        <section aria-label="Staff Passkey Gate" className="max-w-md mx-auto">
-          <div className="bg-paper border-ink-3 shadow-hard-xl rounded-2xl p-6 sm:p-8 text-ink">
-            <div className="w-12 h-12 bg-sun border-2 border-ink rounded-2xl flex items-center justify-center shadow-hard-sm mb-4">
-              <KeyRound className="w-6 h-6 text-ink" />
+    <div className="space-y-8 pb-16">
+      {/* ── Page Hero Section ───────────────────────────────────────────── */}
+      <section className="wh-hero-gradient text-white pt-12 pb-14 px-4 sm:px-6 lg:px-8 border-b border-[#0B1736]">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-3">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/10 border border-white/20 rounded-full text-xs font-semibold uppercase tracking-wider text-[#D6A63C]">
+              <Wrench className="w-3.5 h-3.5" />
+              <span>Facilities Operations</span>
             </div>
 
-            <h2 className="text-xl font-heading mb-1">Staff Access Gate</h2>
-            <p className="text-xs text-ink/80 mb-6">
-              Enter your staff name and shared access key to authorize repair entries.
+            <h1 className="text-3xl sm:text-4xl font-extrabold font-heading text-white tracking-tight">
+              Facilities Staff Desk
+            </h1>
+
+            <p className="text-sm sm:text-base text-[#CBD5E1] max-w-xl font-normal leading-relaxed">
+              Review real-time student issue notices, dispatch technicians, and confirm repairs to keep campus water points available.
             </p>
+          </div>
 
-            {authError && (
-              <div className="mb-4 p-3 bg-coral/15 border-2 border-coral rounded-xl text-xs font-semibold text-coral flex items-center gap-2">
-                <ShieldAlert className="w-4 h-4 shrink-0" />
-                <span>{authError}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleSignIn} className="space-y-4">
-              <div>
-                <label htmlFor="staff-name" className="block text-xs font-bold uppercase tracking-wider mb-1">
-                  Your Full Name
-                </label>
-                <input
-                  id="staff-name"
-                  type="text"
-                  required
-                  value={inputName}
-                  onChange={(e) => setInputName(e.target.value)}
-                  placeholder="e.g. Dave Miller (Plumbing)"
-                  className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-paper text-ink border-2 border-ink rounded-xl shadow-hard-sm focus:border-cobalt focus:ring-0 font-medium placeholder:text-ink/40"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="staff-key" className="block text-xs font-bold uppercase tracking-wider mb-1">
-                  Staff Access Key
-                </label>
-                <input
-                  id="staff-key"
-                  type="password"
-                  required
-                  value={inputKey}
-                  onChange={(e) => setInputKey(e.target.value)}
-                  placeholder="Enter shared staff key..."
-                  className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-paper text-ink border-2 border-ink rounded-xl shadow-hard-sm focus:border-cobalt focus:ring-0 font-mono placeholder:text-ink/40"
-                />
-                <p className="mt-1 text-[11px] text-ink/60">
-                  Shared campus key (default: <code>campus-staff-key-2026</code>)
-                </p>
+          {/* Session Info Bar */}
+          {isAuthenticated && (
+            <div className="bg-white/10 border border-white/20 rounded-xl p-4 flex items-center justify-between sm:justify-end gap-4 shrink-0">
+              <div className="text-right">
+                <div className="flex items-center gap-2 justify-end text-sm font-bold text-white">
+                  <User className="w-4 h-4 text-[#D6A63C]" />
+                  <span>{staffName}</span>
+                </div>
+                <p className="text-xs text-[#CBD5E1]">Authorized Staff Session</p>
               </div>
 
               <button
-                type="submit"
-                className="w-full py-2.5 px-4 text-xs sm:text-sm font-bold border-2 border-ink rounded-xl bg-sun text-ink shadow-hard hover:-translate-y-0.5 btn-tactile cursor-pointer mt-2"
+                type="button"
+                onClick={handleSignOut}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-white/10 hover:bg-[#D94B4B] rounded-lg border border-white/20 transition-colors cursor-pointer"
               >
-                Enter Facilities Portal
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Sign out</span>
               </button>
-            </form>
-          </div>
-        </section>
-      ) : (
-        /* Authenticated Portal Content */
-        <div className="space-y-10">
-          {/* "N to fix" Queue */}
-          <section aria-labelledby="queue-heading" className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <h2 id="queue-heading" className="text-xl sm:text-2xl font-heading text-ink">
-                  Needs Attention
-                </h2>
-                <span className="px-2.5 py-0.5 bg-coral text-white font-bold text-xs rounded-full border-2 border-ink shadow-hard-sm">
-                  {unresolvedQueue.length} to fix
-                </span>
-              </div>
-              <span className="text-xs font-semibold text-ink/70">
-                Sorted oldest first
-              </span>
             </div>
+          )}
+        </div>
+      </section>
 
-            {unresolvedQueue.length === 0 ? (
-              <div className="bg-paper border-ink-3 shadow-hard rounded-2xl p-8 text-center max-w-lg mx-auto">
-                <WaterDrop status="staff_confirmed_resolved" size="lg" className="mx-auto mb-3" />
-                <h3 className="text-lg font-heading text-ink mb-1">All clear!</h3>
-                <p className="text-xs sm:text-sm text-ink/80">
-                  No open issue reports currently pending repair. Excellent work!
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+        {/* ── Authentication Gate (if not signed in) ───────────────────────── */}
+        {!isAuthenticated ? (
+          <section aria-label="Staff Authentication Gate" className="max-w-md mx-auto py-8">
+            <div className="bg-white border border-[#DFE6F0] rounded-2xl shadow-xs p-6 sm:p-8 text-[#102454]">
+              <div className="w-12 h-12 bg-[#EDF2F9] border border-[#DFE6F0] rounded-xl flex items-center justify-center mb-4">
+                <KeyRound className="w-6 h-6 text-[#102454]" />
+              </div>
+
+              <h2 className="text-xl font-bold font-heading mb-1 text-[#102454]">
+                Staff Authentication
+              </h2>
+              <p className="text-xs sm:text-sm text-[#71809B] mb-6">
+                Enter your staff member name and access key to authorize repair entries.
+              </p>
+
+              {authError && (
+                <div className="mb-4 p-3 bg-[#FDF2F2] border border-[#F9D3D3] rounded-xl text-xs font-semibold text-[#D94B4B] flex items-center gap-2">
+                  <ShieldAlert className="w-4 h-4 shrink-0" />
+                  <span>{authError}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleSignIn} className="space-y-4">
+                <div>
+                  <label htmlFor="staff-name" className="block text-xs font-semibold text-[#102454] uppercase tracking-wider mb-1.5">
+                    Staff Member Name
+                  </label>
+                  <input
+                    id="staff-name"
+                    type="text"
+                    required
+                    value={inputName}
+                    onChange={(e) => setInputName(e.target.value)}
+                    placeholder="e.g. Dave Miller"
+                    className="w-full px-3.5 py-2.5 bg-white text-[#102454] border border-[#DFE6F0] rounded-xl text-sm focus:border-[#102454] focus:ring-1 focus:ring-[#102454] placeholder:text-[#94A3B8]"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="staff-key" className="block text-xs font-semibold text-[#102454] uppercase tracking-wider mb-1.5">
+                    Staff Access Key
+                  </label>
+                  <input
+                    id="staff-key"
+                    type="password"
+                    required
+                    value={inputKey}
+                    onChange={(e) => setInputKey(e.target.value)}
+                    placeholder="Enter facilities passkey"
+                    className="w-full px-3.5 py-2.5 bg-white text-[#102454] border border-[#DFE6F0] rounded-xl text-sm focus:border-[#102454] focus:ring-1 focus:ring-[#102454] placeholder:text-[#94A3B8]"
+                  />
+                  <p className="text-[11px] text-[#94A3B8] mt-1">
+                    Demo key: <code className="bg-[#F1F5F9] px-1 py-0.5 rounded font-mono text-[#102454]">campus-staff-key-2026</code>
+                  </p>
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-2.5 px-4 rounded-xl bg-[#102454] hover:bg-[#183375] text-white font-bold text-xs sm:text-sm shadow-xs transition-colors cursor-pointer"
+                >
+                  Sign In to Staff Desk
+                </button>
+              </form>
+            </div>
+          </section>
+        ) : (
+          /* ── Authenticated Staff Operations ─────────────────────────────── */
+          <>
+            {/* Summary Metrics Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-white rounded-xl p-5 border border-[#DFE6F0] shadow-xs">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold text-[#71809B] uppercase tracking-wider">
+                    Unresolved Queue
+                  </span>
+                  <div className="w-8 h-8 rounded-lg bg-[#FDF2F2] flex items-center justify-center">
+                    <AlertTriangle className="w-4 h-4 text-[#D94B4B]" />
+                  </div>
+                </div>
+                <div className="text-3xl font-extrabold text-[#D94B4B] font-heading">
+                  {unresolvedQueue.length}
+                </div>
+                <p className="text-xs text-[#71809B] mt-1">
+                  Active dispenser issues awaiting repair
                 </p>
               </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {unresolvedQueue.map((rep) => {
-                  const wp = waterPointsMap.get(rep.water_point_id);
-                  return (
-                    <div
-                      key={rep.id}
-                      className="bg-paper border-ink-3 shadow-hard rounded-2xl p-5 flex flex-col justify-between"
-                    >
-                      <div>
-                        <div className="flex items-start justify-between gap-3 mb-2">
-                          <div>
-                            <span className="inline-block px-2 py-0.5 bg-coral/20 border border-coral text-coral font-bold text-[11px] rounded-md uppercase mb-1">
-                              Reported unavailable
-                            </span>
-                            <h3 className="font-heading text-base sm:text-lg text-ink leading-snug">
-                              {wp?.name || `Water Point #${rep.water_point_id}`}
-                            </h3>
-                            <p className="text-xs text-ink/70">
-                              {wp?.building ? `${wp.building} • ` : ''}{wp?.location || 'Unknown location'}
-                            </p>
-                          </div>
-                          <WaterDrop status="reported_unavailable" size="sm" />
-                        </div>
 
-                        {/* Issue description box */}
-                        <div className="bg-coral/10 border-2 border-coral/30 rounded-xl p-3 my-3 text-xs">
-                          <span className="font-bold text-coral block mb-0.5">Problem:</span>
-                          <p className="italic text-ink">&ldquo;{rep.description}&rdquo;</p>
-                          <div className="mt-2 flex items-center gap-1 text-[11px] text-ink/60">
-                            <Clock className="w-3 h-3" />
-                            <span>Reported {formatRelativeTime(rep.reported_at)} ({formatDateTime(rep.reported_at)})</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="pt-2">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedReport(rep)}
-                          className="w-full py-2 px-3 text-xs sm:text-sm font-bold bg-mint text-ink border-2 border-ink rounded-xl shadow-hard-sm hover:-translate-y-0.5 btn-tactile cursor-pointer inline-flex items-center justify-center gap-1.5"
-                        >
-                          <CheckCircle2 className="w-4 h-4" />
-                          <span>Confirm Repair &amp; Resolve</span>
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="bg-white rounded-xl p-5 border border-[#DFE6F0] shadow-xs">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold text-[#71809B] uppercase tracking-wider">
+                    Completed Repairs
+                  </span>
+                  <div className="w-8 h-8 rounded-lg bg-[#EBF6EE] flex items-center justify-center">
+                    <CheckCircle2 className="w-4 h-4 text-[#2F8A57]" />
+                  </div>
+                </div>
+                <div className="text-3xl font-extrabold text-[#2F8A57] font-heading">
+                  {completedLog.length}
+                </div>
+                <p className="text-xs text-[#71809B] mt-1">
+                  Total logged resolutions on record
+                </p>
               </div>
-            )}
-          </section>
 
-          {/* Completed Repairs Log */}
-          <section aria-labelledby="log-heading" className="space-y-4">
-            <div className="flex items-center gap-2.5">
-              <h2 id="log-heading" className="text-xl sm:text-2xl font-heading text-ink">
-                Completed Repairs Log
-              </h2>
-              <span className="px-2.5 py-0.5 bg-mint text-ink font-bold text-xs rounded-full border-2 border-ink shadow-hard-sm">
-                {completedLog.length} resolved
-              </span>
+              <div className="bg-white rounded-xl p-5 border border-[#DFE6F0] shadow-xs">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold text-[#71809B] uppercase tracking-wider">
+                    Total Monitored
+                  </span>
+                  <div className="w-8 h-8 rounded-lg bg-[#EDF2F9] flex items-center justify-center">
+                    <Building2 className="w-4 h-4 text-[#102454]" />
+                  </div>
+                </div>
+                <div className="text-3xl font-extrabold text-[#102454] font-heading">
+                  {waterPoints.length}
+                </div>
+                <p className="text-xs text-[#71809B] mt-1">
+                  Water dispensers across campus
+                </p>
+              </div>
             </div>
 
-            {completedLog.length === 0 ? (
-              <p className="text-xs text-ink/60">No completed repairs logged yet.</p>
-            ) : (
-              <div className="bg-paper border-ink-3 shadow-hard rounded-2xl overflow-hidden">
-                <div className="divide-y-2 divide-ink/10">
-                  {completedLog.map((rep) => {
-                    const wp = waterPointsMap.get(rep.water_point_id);
+            {/* Unresolved Issues Queue */}
+            <section aria-label="Unresolved Reports Queue" className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold font-heading text-[#102454]">
+                    Needs Attention ({unresolvedQueue.length})
+                  </h2>
+                  <p className="text-xs sm:text-sm text-[#71809B]">
+                    Dispenser issues sorted oldest first to prioritize aging student notices
+                  </p>
+                </div>
+              </div>
+
+              {unresolvedQueue.length === 0 ? (
+                <div className="text-center py-12 px-4 bg-white border border-[#DFE6F0] rounded-xl shadow-xs">
+                  <CheckCircle2 className="w-10 h-10 text-[#2F8A57] mx-auto mb-3" />
+                  <h3 className="text-base font-bold font-heading text-[#102454]">
+                    All Campus Water Points Clear
+                  </h3>
+                  <p className="text-xs text-[#71809B] mt-1">
+                    No active unresolved issue notices at this time.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {unresolvedQueue.map((report) => {
+                    const wp = waterPointsMap.get(report.water_point_id);
                     return (
                       <div
-                        key={rep.id}
-                        className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs sm:text-sm hover:bg-sky/20 transition-colors"
+                        key={report.id}
+                        className="bg-white border border-[#DFE6F0] rounded-xl p-5 shadow-xs hover:border-[#CBD5E1] transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
                       >
-                        <div className="space-y-1">
+                        <div className="space-y-2 flex-1">
                           <div className="flex items-center gap-2">
-                            <span className="font-bold text-ink text-sm sm:text-base">
-                              {wp?.name || `Point #${rep.water_point_id}`}
+                            <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-[#FDF2F2] text-[#D94B4B] border border-[#F9D3D3]">
+                              Reported Unavailable
                             </span>
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-mint/30 border border-mint text-ink text-[11px] font-bold rounded-full">
-                              <CheckCircle2 className="w-3 h-3 text-mint" />
-                              Resolved
-                            </span>
+                            {wp?.building && (
+                              <span className="text-xs font-semibold text-[#71809B] bg-[#F1F5F9] px-2 py-0.5 rounded border border-[#E2E8F0]">
+                                {wp.building}
+                              </span>
+                            )}
                           </div>
-                          <p className="text-xs text-ink/70">
-                            {wp?.location} {wp?.building && `(${wp.building})`}
-                          </p>
-                          <p className="text-xs italic text-ink/80">
-                            Original issue: &ldquo;{rep.description}&rdquo;
-                          </p>
-                          {rep.resolution_notes && (
-                            <div className="mt-2 text-xs bg-paper border border-ink/30 rounded-lg p-2.5 font-medium text-ink">
-                              <span className="font-bold text-cobalt">Resolution Notes: </span>
-                              {rep.resolution_notes}
+
+                          <h3 className="text-base font-bold text-[#102454] font-heading leading-tight">
+                            {wp?.name || `Water Point #${report.water_point_id}`}
+                          </h3>
+
+                          {wp?.location && (
+                            <div className="flex items-center gap-1.5 text-xs text-[#71809B]">
+                              <MapPin className="w-3.5 h-3.5 shrink-0 text-[#102454]" />
+                              <span>{wp.location}</span>
                             </div>
                           )}
+
+                          <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg p-3 text-xs">
+                            <span className="font-bold text-[#D94B4B] block mb-0.5">Reported Problem:</span>
+                            <p className="italic text-[#334155]">&ldquo;{report.description}&rdquo;</p>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 text-[11px] text-[#71809B]">
+                            <Clock className="w-3.5 h-3.5" />
+                            <span>Reported {formatRelativeTime(report.reported_at)} ({formatDateTime(report.reported_at)})</span>
+                          </div>
                         </div>
 
-                        <div className="sm:text-right shrink-0 space-y-0.5 border-t sm:border-t-0 pt-2 sm:pt-0 border-ink/10">
-                          <div className="font-bold text-ink">
-                            Fixed by {rep.resolved_by || 'Staff'}
-                          </div>
-                          <div className="text-[11px] text-ink/60">
-                            {formatDateTime(rep.resolved_at)} ({formatRelativeTime(rep.resolved_at)})
-                          </div>
+                        <div className="shrink-0 w-full sm:w-auto">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedReport(report)}
+                            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 text-xs sm:text-sm font-semibold text-white bg-[#2F8A57] hover:bg-[#277449] rounded-xl shadow-xs transition-colors cursor-pointer"
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                            <span>Confirm Resolved</span>
+                          </button>
                         </div>
                       </div>
                     );
                   })}
                 </div>
+              )}
+            </section>
+
+            {/* Completed Repairs History */}
+            <section aria-label="Completed Repairs Log" className="space-y-4 pt-4">
+              <div>
+                <h2 className="text-xl font-bold font-heading text-[#102454]">
+                  Completed Repairs Log ({completedLog.length})
+                </h2>
+                <p className="text-xs sm:text-sm text-[#71809B]">
+                  Historical ledger of maintenance completed by the campus facilities team
+                </p>
               </div>
-            )}
-          </section>
-        </div>
-      )}
+
+              {completedLog.length === 0 ? (
+                <div className="text-center py-8 px-4 bg-white border border-[#DFE6F0] rounded-xl shadow-xs text-xs text-[#71809B]">
+                  No completed repairs recorded yet.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {completedLog.map((rep) => {
+                    const wp = waterPointsMap.get(rep.water_point_id);
+                    return (
+                      <div
+                        key={rep.id}
+                        className="bg-white border border-[#DFE6F0] rounded-xl p-5 shadow-xs space-y-2.5"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-[#EBF6EE] text-[#2F8A57] border border-[#D2EDD9]">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            Resolved
+                          </span>
+                          {rep.resolved_at && (
+                            <span className="text-[11px] text-[#94A3B8]">
+                              {formatRelativeTime(rep.resolved_at)}
+                            </span>
+                          )}
+                        </div>
+
+                        <h3 className="text-sm font-bold text-[#102454] font-heading leading-tight">
+                          {wp?.name || `Water Point #${rep.water_point_id}`}
+                        </h3>
+
+                        {wp?.location && (
+                          <div className="flex items-center gap-1.5 text-xs text-[#71809B]">
+                            <MapPin className="w-3.5 h-3.5 text-[#102454] shrink-0" />
+                            <span>{wp.location} {wp.building ? `(${wp.building})` : ''}</span>
+                          </div>
+                        )}
+
+                        <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg p-2.5 text-xs space-y-1">
+                          <div className="text-[#71809B]">
+                            <strong>Original Issue:</strong> &ldquo;{rep.description}&rdquo;
+                          </div>
+                          {rep.resolution_notes && (
+                            <div className="text-[#102454] pt-1 border-t border-[#E2E8F0]">
+                              <strong>Resolution Notes:</strong> {rep.resolution_notes}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="pt-1 flex items-center justify-between text-[11px] text-[#71809B]">
+                          <span>Repaired by <strong>{rep.resolved_by || 'Staff'}</strong></span>
+                          {rep.resolved_at && (
+                            <span>{formatDateTime(rep.resolved_at)}</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          </>
+        )}
+      </div>
 
       {/* Repair Confirmation Dialog */}
       {selectedReport && (
