@@ -10,6 +10,7 @@ def sample_water_point(client: TestClient) -> dict:
     res = client.post(
         "/api/water-points",
         json={"name": "Library 2nd Floor", "location": "West Wing Study Area"},
+        headers={"X-Staff-Key": settings.STAFF_API_KEY},
     )
     assert res.status_code == 201
     return res.json()
@@ -72,8 +73,9 @@ def test_get_report_not_found(client: TestClient):
 def test_list_reports_with_status_filter(client: TestClient):
     """Test retrieving reports with optional status filtering."""
     # Create two water points
-    wp1 = client.post("/api/water-points", json={"name": "WP 1", "location": "Loc 1"}).json()
-    wp2 = client.post("/api/water-points", json={"name": "WP 2", "location": "Loc 2"}).json()
+    staff_headers = {"X-Staff-Key": settings.STAFF_API_KEY}
+    wp1 = client.post("/api/water-points", json={"name": "WP 1", "location": "Loc 1"}, headers=staff_headers).json()
+    wp2 = client.post("/api/water-points", json={"name": "WP 2", "location": "Loc 2"}, headers=staff_headers).json()
 
     # Submit reports
     r1 = client.post(

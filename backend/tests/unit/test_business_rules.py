@@ -2,6 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
+from app.core.config import settings
 from app.models import IssueReport, ReportStatus, WaterPoint
 from app.crud import resolve_report
 
@@ -12,6 +13,7 @@ def test_water_point(client: TestClient) -> dict:
     res = client.post(
         "/api/water-points",
         json={"name": "Hostel 1 Ground Floor", "location": "Near Central Staircase"},
+        headers={"X-Staff-Key": settings.STAFF_API_KEY},
     )
     assert res.status_code == 201
     return res.json()

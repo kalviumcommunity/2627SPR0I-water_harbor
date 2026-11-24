@@ -1,6 +1,7 @@
 from typing import List
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
+from app.core.security import verify_staff_key
 from app.db.session import get_db
 from app.schemas.water_point import WaterPointCreate, WaterPointResponse
 from app.services.water_point_service import water_point_service
@@ -21,9 +22,10 @@ def list_water_points(
 @router.post("", response_model=WaterPointResponse, status_code=status.HTTP_201_CREATED)
 def create_water_point(
     water_point_in: WaterPointCreate,
+    _staff_key: str = Depends(verify_staff_key),
     db: Session = Depends(get_db),
 ):
-    """Create a new campus water point."""
+    """Create a new campus water point (staff authentication required)."""
     return water_point_service.create_water_point(db, water_point_in)
 
 
