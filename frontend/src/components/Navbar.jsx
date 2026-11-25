@@ -10,36 +10,45 @@ import { useApp } from '../context/useApp';
  */
 export function Navbar() {
   const location = useLocation();
-  const { isFallback } = useApp();
+  const { error, loading, isRefreshing, refreshData, staffSession, logoutStaff } = useApp();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Check active staff session
-  const staffName = sessionStorage.getItem('staff_name') || '';
-  const isStaffAuthenticated = Boolean(staffName && sessionStorage.getItem('staff_access_key'));
+  // Derive staff authentication from AppContext session
+  const isStaffAuthenticated = Boolean(staffSession?.authenticated);
+  const staffName = staffSession?.staff?.display_name || '';
 
   const isActive = (path) => location.pathname === path;
 
-  const handleSignOut = () => {
-    sessionStorage.removeItem('staff_name');
-    sessionStorage.removeItem('staff_access_key');
-    window.location.reload();
+  const handleSignOut = async () => {
+    try {
+      await logoutStaff();
+    } catch {
+      // Ignore network errors on logout
+    }
   };
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#DFE6F0]">
-      {/* Offline Mode Banner */}
-      {isFallback && (
-        <div
-          role="alert"
-          className="bg-[#FEF7EA] border-b border-[#FCE1B5] px-4 py-1.5 text-xs font-medium text-[#D58A00] flex items-center justify-between gap-3 max-w-7xl mx-auto"
-        >
-          <div className="flex items-center gap-2">
-            <AlertCircle className="w-3.5 h-3.5 shrink-0 text-[#D58A00]" />
-            <span>Operating in cached offline mode. Displaying local campus records.</span>
+      {/* Backend Connection Error Banner */}
+      {error && (
+        <div className="bg-[#FDF2F2] border-b border-[#F8C9C9]">
+          <div
+            role="alert"
+            className="px-4 sm:px-6 lg:px-8 py-2 text-xs font-medium text-[#B91C1C] flex items-center justify-between gap-3 max-w-7xl mx-auto"
+          >
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0 text-[#D94B4B]" />
+              <span>{error}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => refreshData({ silent: true, notifyOnError: true })}
+              disabled={loading || isRefreshing}
+              className="text-[11px] font-semibold bg-white text-[#B91C1C] hover:bg-[#FDF2F2] border border-[#F8C9C9] px-2.5 py-0.5 rounded transition-colors cursor-pointer shrink-0 disabled:opacity-50"
+            >
+              {loading || isRefreshing ? 'Retrying...' : 'Retry'}
+            </button>
           </div>
-          <span className="text-[10px] uppercase tracking-wider bg-[#D58A00]/10 text-[#D58A00] px-2 py-0.5 rounded font-mono font-medium">
-            Offline Cache
-          </span>
         </div>
       )}
 
@@ -51,26 +60,26 @@ export function Navbar() {
             className="flex items-center gap-2.5 group focus:outline-none"
             aria-label="Water Harbour Home"
           >
-            <div className="w-8 h-8 rounded-lg bg-[#102454] flex items-center justify-center text-white shadow-xs">
-              <Droplet className="w-4 h-4 text-[#D6A63C] fill-[#D6A63C]/30" />
+            <div className="w-8 h-8 rounded-lg bg-[#102454] flex items-center justify-center text-[#D6A63C] shadow-xs group-hover:bg-[#162F6B] transition-colors">
+              <Droplet className="w-4 h-4 fill-[#D6A63C]" />
             </div>
             <div className="flex flex-col">
-              <span className="font-heading text-[15px] font-bold text-[#102454] tracking-tight leading-none">
+              <span className="font-heading font-extrabold text-[#102454] text-base leading-tight tracking-tight group-hover:text-[#162F6B] transition-colors">
                 Water Harbour
               </span>
-              <span className="text-[11px] font-medium text-[#5A6B87] tracking-normal leading-tight mt-0.5">
-                Campus Hydration
+              <span className="text-[10px] text-[#5A6B87] font-medium tracking-wide">
+                Campus WaterPoint Desk
               </span>
             </div>
           </Link>
 
-          {/* Central Navigation Links (Desktop) */}
-          <nav aria-label="Main Navigation" className="hidden md:flex items-center gap-1">
+          {/* Desktop Navigation Links */}
+          <nav className="hidden md:flex items-center gap-1 sm:gap-2" aria-label="Main navigation">
             <Link
               to="/"
-              className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                 isActive('/')
-                  ? 'bg-[#EDF2F9] text-[#102454] font-semibold'
+                  ? 'bg-[#F1F5F9] text-[#102454] font-semibold'
                   : 'text-[#5A6B87] hover:text-[#102454] hover:bg-[#F8FAFC]'
               }`}
             >
@@ -79,126 +88,125 @@ export function Navbar() {
 
             <Link
               to="/report"
-              className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                 isActive('/report')
-                  ? 'bg-[#EDF2F9] text-[#102454] font-semibold'
-                  : 'text-[#5A6B87] hover:text-[#102454] hover:bg-[#F8FAFC]'
+                  ? 'bg-[#102454] text-white font-semibold'
+                  : 'text-[#102454] bg-[#EDF2F9] hover:bg-[#E2E8F0]'
               }`}
             >
-              Report an Issue
+              <AlertCircle className="w-3.5 h-3.5 text-[#D94B4B]" />
+              <span>Report Issue</span>
             </Link>
+
+            <div className="h-4 w-px bg-[#DFE6F0] mx-1" aria-hidden="true" />
 
             <Link
               to="/staff"
-              className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                 isActive('/staff')
-                  ? 'bg-[#EDF2F9] text-[#102454] font-semibold'
+                  ? 'bg-[#102454] text-white font-semibold'
                   : 'text-[#5A6B87] hover:text-[#102454] hover:bg-[#F8FAFC]'
               }`}
             >
-              Facilities Staff
+              <Wrench className="w-3.5 h-3.5" />
+              <span>Staff Desk</span>
             </Link>
-          </nav>
 
-          {/* Right Action: Staff Login / Session */}
-          <div className="hidden md:flex items-center gap-3">
-            {isStaffAuthenticated ? (
-              <div className="flex items-center gap-2 pl-3 border-l border-[#DFE6F0]">
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#F8FAFC] border border-[#DFE6F0]">
-                  <User className="w-3.5 h-3.5 text-[#102454]" />
-                  <span className="text-xs font-semibold text-[#102454]">{staffName}</span>
-                </div>
+            {/* Active Staff Session Indicator & Sign Out */}
+            {isStaffAuthenticated && (
+              <div className="flex items-center gap-2 pl-2">
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium bg-[#EBF6EE] text-[#2F8A57] border border-[#D2EDD9]">
+                  <User className="w-3 h-3 text-[#2F8A57]" />
+                  <span>{staffName || 'Staff'}</span>
+                </span>
+
                 <button
                   type="button"
                   onClick={handleSignOut}
                   title="Sign out of staff session"
-                  className="p-1 rounded-md text-[#5A6B87] hover:text-[#D94B4B] hover:bg-[#FDF2F2] transition-colors cursor-pointer"
+                  className="p-1.5 rounded-lg text-[#5A6B87] hover:text-[#D94B4B] hover:bg-[#FDF2F2] transition-colors cursor-pointer"
                   aria-label="Sign out"
                 >
                   <LogOut className="w-3.5 h-3.5" />
                 </button>
               </div>
-            ) : (
-              <Link
-                to="/staff"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#102454] bg-white border border-[#DFE6F0] rounded-lg hover:bg-[#F8FAFC] hover:border-[#CBD5E1] transition-all shadow-xs"
-              >
-                <Wrench className="w-3.5 h-3.5 text-[#5A6B87]" />
-                <span>Staff Portal</span>
-              </Link>
             )}
-          </div>
+          </nav>
 
-          {/* Mobile Menu Toggle */}
-          <div className="md:hidden flex items-center">
+          {/* Mobile Hamburger Button */}
+          <div className="flex items-center md:hidden">
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-1.5 rounded-md text-[#5A6B87] hover:text-[#102454] hover:bg-[#F8FAFC] transition-colors"
-              aria-label="Toggle mobile menu"
+              className="p-2 rounded-lg text-[#5A6B87] hover:text-[#102454] hover:bg-[#F8FAFC] transition-colors focus:outline-hidden"
+              aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+              aria-expanded={mobileMenuOpen}
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
         </div>
-
-        {/* Mobile Navigation Drawer */}
-        {mobileMenuOpen && (
-          <div className="md:hidden py-3 border-t border-[#DFE6F0] space-y-1 animate-in fade-in duration-150">
-            <Link
-              to="/"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`block px-3 py-2 rounded-lg text-sm ${
-                isActive('/')
-                  ? 'bg-[#EDF2F9] text-[#102454] font-semibold'
-                  : 'text-[#5A6B87] hover:bg-[#F8FAFC]'
-              }`}
-            >
-              Water Points Directory
-            </Link>
-
-            <Link
-              to="/report"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`block px-3 py-2 rounded-lg text-sm ${
-                isActive('/report')
-                  ? 'bg-[#EDF2F9] text-[#102454] font-semibold'
-                  : 'text-[#5A6B87] hover:bg-[#F8FAFC]'
-              }`}
-            >
-              Report an Issue
-            </Link>
-
-            <Link
-              to="/staff"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`block px-3 py-2 rounded-lg text-sm ${
-                isActive('/staff')
-                  ? 'bg-[#EDF2F9] text-[#102454] font-semibold'
-                  : 'text-[#5A6B87] hover:bg-[#F8FAFC]'
-              }`}
-            >
-              Facilities Staff Desk
-            </Link>
-
-            {isStaffAuthenticated && (
-              <div className="pt-2 border-t border-[#DFE6F0] flex items-center justify-between px-3 text-xs font-semibold text-[#102454]">
-                <span>Logged in: {staffName}</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    handleSignOut();
-                    setMobileMenuOpen(false);
-                  }}
-                  className="text-[#D94B4B] hover:underline"
-                >
-                  Sign out
-                </button>
-              </div>
-            )}
-          </div>
-        )}
       </div>
+
+      {/* Mobile Drawer Menu */}
+      {mobileMenuOpen && (
+        <div className="md:hidden border-t border-[#DFE6F0] bg-white px-4 pt-3 pb-4 space-y-2 animate-in slide-in-from-top-2 duration-150">
+          <Link
+            to="/"
+            onClick={() => setMobileMenuOpen(false)}
+            className={`block px-3 py-2 rounded-lg text-sm font-medium ${
+              isActive('/')
+                ? 'bg-[#F1F5F9] text-[#102454] font-semibold'
+                : 'text-[#5A6B87] hover:bg-[#F8FAFC]'
+            }`}
+          >
+            Water Points Directory
+          </Link>
+
+          <Link
+            to="/report"
+            onClick={() => setMobileMenuOpen(false)}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium ${
+              isActive('/report')
+                ? 'bg-[#102454] text-white font-semibold'
+                : 'text-[#102454] bg-[#EDF2F9]'
+            }`}
+          >
+            <AlertCircle className="w-4 h-4 text-[#D94B4B]" />
+            <span>Report Unavailable Point</span>
+          </Link>
+
+          <Link
+            to="/staff"
+            onClick={() => setMobileMenuOpen(false)}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium ${
+              isActive('/staff')
+                ? 'bg-[#102454] text-white font-semibold'
+                : 'text-[#5A6B87] hover:bg-[#F8FAFC]'
+            }`}
+          >
+            <Wrench className="w-4 h-4" />
+            <span>Facilities Staff Desk</span>
+          </Link>
+
+          {isStaffAuthenticated && (
+            <div className="pt-2 border-t border-[#DFE6F0] flex items-center justify-between px-3 text-xs">
+              <span className="text-[#5A6B87] font-medium">Signed in: {staffName}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  void handleSignOut();
+                  setMobileMenuOpen(false);
+                }}
+                className="inline-flex items-center gap-1 text-[#D94B4B] font-semibold hover:underline cursor-pointer"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Sign Out</span>
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </header>
   );
 }

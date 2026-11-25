@@ -1,16 +1,24 @@
 import pytest
 from fastapi.testclient import TestClient
 from app.models import ReportStatus
-from app.core.config import settings
+from app.core.rate_limit import report_rate_limiter
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limiter():
+    """Reset the in-memory rate limiter before each test."""
+    report_rate_limiter.reset()
+    yield
+    report_rate_limiter.reset()
 
 
 @pytest.fixture
-def sample_water_point(client: TestClient) -> dict:
+def sample_water_point(client: TestClient, staff_auth: dict) -> dict:
     """Helper fixture to create a water point for report tests."""
     res = client.post(
         "/api/water-points",
         json={"name": "Library 2nd Floor", "location": "West Wing Study Area"},
-        headers={"X-Staff-Key": settings.STAFF_API_KEY},
+        headers=staff_auth["headers"],
     )
     assert res.status_code == 201
     return res.json()
@@ -31,8 +39,9 @@ def test_submit_report_success(client: TestClient, sample_water_point: dict):
     assert data["description"] == payload["description"]
     assert data["status"] == ReportStatus.REPORTED_UNAVAILABLE.value
     assert data["reported_at"] is not None
-    assert data["resolved_at"] is None
-    assert data["resolved_by"] is None
+    # Public schema does NOT expose resolved_by or resolution_notes
+    assert "resolved_by" not in data
+    assert "resolution_notes" not in data
 
 
 def test_submit_report_nonexistent_water_point(client: TestClient):
@@ -70,19 +79,26 @@ def test_get_report_not_found(client: TestClient):
     assert "not found" in response.json()["detail"].lower()
 
 
-def test_list_reports_with_status_filter(client: TestClient):
+def test_list_reports_with_status_filter(client: TestClient, staff_auth: dict):
     """Test retrieving reports with optional status filtering."""
     # Create two water points
-    staff_headers = {"X-Staff-Key": settings.STAFF_API_KEY}
-    wp1 = client.post("/api/water-points", json={"name": "WP 1", "location": "Loc 1"}, headers=staff_headers).json()
-    wp2 = client.post("/api/water-points", json={"name": "WP 2", "location": "Loc 2"}, headers=staff_headers).json()
+    wp1 = client.post(
+        "/api/water-points",
+        json={"name": "WP 1", "location": "Loc 1"},
+        headers=staff_auth["headers"],
+    ).json()
+    wp2 = client.post(
+        "/api/water-points",
+        json={"name": "WP 2", "location": "Loc 2"},
+        headers=staff_auth["headers"],
+    ).json()
 
     # Submit reports
     r1 = client.post(
         "/api/reports",
         json={"water_point_id": wp1["id"], "description": "Dispenser 1 faulty"},
     ).json()
-    r2 = client.post(
+    client.post(
         "/api/reports",
         json={"water_point_id": wp2["id"], "description": "Dispenser 2 noisy"},
     ).json()
@@ -105,8 +121,8 @@ def test_list_reports_with_status_filter(client: TestClient):
     assert wp1_reports[0]["id"] == r1["id"]
 
 
-def test_resolve_report_endpoint_success(client: TestClient, sample_water_point: dict):
-    """Staff can confirm resolution via PATCH /api/reports/{id}/resolve with X-Staff-Key."""
+def test_resolve_report_endpoint_success(client: TestClient, sample_water_point: dict, staff_auth: dict):
+    """Staff can confirm resolution via PATCH /api/reports/{id}/resolve with staff auth."""
     wp_id = sample_water_point["id"]
     create_res = client.post(
         "/api/reports",
@@ -117,17 +133,17 @@ def test_resolve_report_endpoint_success(client: TestClient, sample_water_point:
 
     res = client.patch(
         f"/api/reports/{report_id}/resolve",
-        params={"resolved_by": "Officer Smith"},
-        headers={"X-Staff-Key": settings.STAFF_API_KEY},
+        headers=staff_auth["headers"],
     )
     assert res.status_code == 200
     data = res.json()
     assert data["status"] == ReportStatus.STAFF_CONFIRMED_RESOLVED.value
-    assert data["resolved_by"] == "Officer Smith"
+    # Derived from authenticated staff account display_name
+    assert data["resolved_by"] == "Facilities Lead Officer"
     assert data["resolved_at"] is not None
 
 
-def test_resolve_post_endpoint_with_notes(client: TestClient, sample_water_point: dict):
+def test_resolve_post_endpoint_with_notes(client: TestClient, sample_water_point: dict, staff_auth: dict):
     """Staff can confirm resolution via POST /api/reports/{id}/resolve with JSON body notes."""
     wp_id = sample_water_point["id"]
     create_res = client.post(
@@ -140,20 +156,20 @@ def test_resolve_post_endpoint_with_notes(client: TestClient, sample_water_point
     res = client.post(
         f"/api/reports/{report_id}/resolve",
         json={
-            "resolved_by": "Technician Ramesh",
             "resolution_notes": "Replaced valve cartridge and cleaned aerator.",
         },
-        headers={"X-Staff-Key": settings.STAFF_API_KEY},
+        headers=staff_auth["headers"],
     )
     assert res.status_code == 200
     data = res.json()
     assert data["status"] == ReportStatus.STAFF_CONFIRMED_RESOLVED.value
-    assert data["resolved_by"] == "Technician Ramesh"
+    assert data["resolved_by"] == "Facilities Lead Officer"
     assert data["resolution_notes"] == "Replaced valve cartridge and cleaned aerator."
 
 
-def test_resolve_missing_staff_key_returns_401(client: TestClient, sample_water_point: dict):
-    """Attempting resolution without X-Staff-Key returns 401 Unauthorized."""
+def test_resolve_unauthenticated_returns_401(client: TestClient, sample_water_point: dict):
+    """Attempting resolution without staff session cookie returns 401 Unauthorized."""
+    client.cookies.clear()
     wp_id = sample_water_point["id"]
     create_res = client.post(
         "/api/reports",
@@ -163,14 +179,14 @@ def test_resolve_missing_staff_key_returns_401(client: TestClient, sample_water_
 
     res = client.post(
         f"/api/reports/{report_id}/resolve",
-        json={"resolved_by": "Unauthenticated Staff"},
+        json={"resolution_notes": "Attempt without auth"},
     )
     assert res.status_code == 401
-    assert "missing x-staff-key" in res.json()["detail"].lower()
+    assert "staff authentication required" in res.json()["detail"].lower()
 
 
-def test_resolve_invalid_staff_key_returns_401(client: TestClient, sample_water_point: dict):
-    """Attempting resolution with invalid X-Staff-Key returns 401 Unauthorized."""
+def test_resolve_missing_csrf_returns_403(client: TestClient, sample_water_point: dict, staff_auth: dict):
+    """Attempting resolution with session cookie but missing CSRF token returns 403 Forbidden."""
     wp_id = sample_water_point["id"]
     create_res = client.post(
         "/api/reports",
@@ -178,16 +194,16 @@ def test_resolve_invalid_staff_key_returns_401(client: TestClient, sample_water_
     )
     report_id = create_res.json()["id"]
 
+    # Session cookie exists in client, but we don't send X-CSRF-Token
     res = client.post(
         f"/api/reports/{report_id}/resolve",
-        json={"resolved_by": "Staff Impersonator"},
-        headers={"X-Staff-Key": "wrong-key-value"},
+        json={"resolution_notes": "Missing CSRF"},
     )
-    assert res.status_code == 401
-    assert "invalid x-staff-key" in res.json()["detail"].lower()
+    assert res.status_code == 403
+    assert "csrf verification failed" in res.json()["detail"].lower()
 
 
-def test_resolve_already_resolved_report_endpoint(client: TestClient, sample_water_point: dict):
+def test_resolve_already_resolved_report_endpoint(client: TestClient, sample_water_point: dict, staff_auth: dict):
     """Attempting to resolve an already-resolved report returns 400."""
     wp_id = sample_water_point["id"]
     create_res = client.post(
@@ -198,25 +214,22 @@ def test_resolve_already_resolved_report_endpoint(client: TestClient, sample_wat
 
     res1 = client.patch(
         f"/api/reports/{report_id}/resolve",
-        headers={"X-Staff-Key": settings.STAFF_API_KEY},
+        headers=staff_auth["headers"],
     )
     assert res1.status_code == 200
 
     res2 = client.patch(
         f"/api/reports/{report_id}/resolve",
-        headers={"X-Staff-Key": settings.STAFF_API_KEY},
+        headers=staff_auth["headers"],
     )
     assert res2.status_code == 400
     assert "already resolved" in res2.json()["detail"].lower()
 
 
-def test_resolve_nonexistent_report_endpoint(client: TestClient):
+def test_resolve_nonexistent_report_endpoint(client: TestClient, staff_auth: dict):
     """Attempting to resolve a non-existent report returns 404."""
     res = client.patch(
         "/api/reports/77777/resolve",
-        headers={"X-Staff-Key": settings.STAFF_API_KEY},
+        headers=staff_auth["headers"],
     )
     assert res.status_code == 404
-
-
-

@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { AlertCircle, CheckCircle2, ArrowLeft, Send, AlertTriangle, Info, Clock, Building2 } from 'lucide-react';
 import { useApp } from '../context/useApp';
 import Chip from '../components/Chip';
+import { formatBackendError } from '../lib/reliability';
 
 const ISSUE_PRESETS = [
   'No water dispensing',
@@ -21,7 +22,7 @@ const ISSUE_PRESETS = [
 export function ReportPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { waterPoints, activeReportsMap, addReport } = useApp();
+  const { waterPoints, activeReportsMap, addReport, error, loading } = useApp();
 
   const prefilledWpId = searchParams.get('wp') || '';
 
@@ -93,7 +94,7 @@ export function ReportPage() {
       } else {
         setFeedback({
           type: 'error',
-          message: err.response?.data?.detail || err.message || 'Could not submit report. Please try again.',
+          message: formatBackendError(err, 'submit'),
         });
       }
     } finally {
@@ -138,6 +139,19 @@ export function ReportPage() {
         </div>
 
         <div className="bg-white border border-[#DFE6F0] rounded-xl shadow-xs p-5 sm:p-7 space-y-5">
+          {/* Backend Availability Error */}
+          {error && !loading && waterPoints.length === 0 && (
+            <div
+              role="alert"
+              className="p-3.5 rounded-lg border bg-[#FDF2F2] border-[#F8C9C9] text-[#B91C1C] flex items-start gap-2.5 text-xs"
+            >
+              <AlertCircle className="w-4 h-4 shrink-0 text-[#D94B4B] mt-0.5" />
+              <div className="flex-1 font-medium leading-relaxed">
+                {error}
+              </div>
+            </div>
+          )}
+
           {/* Feedback Alerts */}
           {feedback && (
             <div
@@ -278,7 +292,7 @@ export function ReportPage() {
 
               <button
                 type="submit"
-                disabled={isSubmitting || !description.trim()}
+                disabled={isSubmitting || !effectiveWpId || !description.trim()}
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4.5 py-2 rounded-lg bg-[#102454] hover:bg-[#162F6B] text-white font-medium text-xs sm:text-sm shadow-xs transition-colors cursor-pointer disabled:opacity-50"
               >
                 <Send className="w-3.5 h-3.5 text-[#D6A63C]" />

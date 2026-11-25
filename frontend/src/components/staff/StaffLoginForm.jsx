@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import Alert from '../common/Alert';
-import { DEMO_STAFF_CREDENTIALS } from '../../utils/constants';
 import { validateLoginForm } from '../../utils/validators';
 
 export function StaffLoginForm({ onLogin }) {
@@ -27,12 +26,6 @@ export function StaffLoginForm({ onLogin }) {
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const handleFillDemo = () => {
-    setEmail(DEMO_STAFF_CREDENTIALS.email);
-    setPassword(DEMO_STAFF_CREDENTIALS.password);
-    setError(null);
   };
 
   return (
@@ -72,7 +65,7 @@ export function StaffLoginForm({ onLogin }) {
             type="text"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="facilities@christuniversity.in"
+            placeholder="Enter your staff email"
             style={{
               width: '100%',
               padding: '10px 12px',
@@ -118,24 +111,6 @@ export function StaffLoginForm({ onLogin }) {
         >
           {submitting ? 'Authenticating...' : 'Sign In as Staff'}
         </button>
-
-        <div
-          style={{
-            marginTop: 20,
-            paddingTop: 16,
-            borderTop: '1px solid var(--slate-100)',
-            textAlign: 'center',
-          }}
-        >
-          <button
-            type="button"
-            onClick={handleFillDemo}
-            className="btn btn-secondary btn-sm"
-            style={{ width: '100%' }}
-          >
-            Fill Demo Staff Credentials
-          </button>
-        </div>
       </form>
     </div>
   );

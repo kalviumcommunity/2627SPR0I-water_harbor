@@ -1,12 +1,21 @@
 import { useState } from 'react';
 import { X, CheckCircle2, AlertCircle } from 'lucide-react';
+import { formatBackendError } from '../lib/reliability';
 
 /**
  * Premium Modal Dialog for Facilities Staff to confirm a repair.
  * Clean SaaS modal with refined typography, quiet borders, and distinct action states.
+ * Derives staff identity from the authenticated session.
  */
-export function RepairDialog({ isOpen, onClose, onResolve, report, waterPointName, isSubmitting }) {
-  const [resolvedBy, setResolvedBy] = useState(() => sessionStorage.getItem('staff_name') || '');
+export function RepairDialog({
+  isOpen,
+  onClose,
+  onResolve,
+  report,
+  waterPointName,
+  isSubmitting,
+  staffName,
+}) {
   const [resolutionNotes, setResolutionNotes] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -14,20 +23,18 @@ export function RepairDialog({ isOpen, onClose, onResolve, report, waterPointNam
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!resolvedBy.trim()) {
-      setErrorMessage('Please enter your staff member name.');
-      return;
-    }
 
     try {
       setErrorMessage('');
-      await onResolve(report.id, resolvedBy.trim(), resolutionNotes.trim());
+      await onResolve(report.id, resolutionNotes.trim());
       setResolutionNotes('');
     } catch (err) {
       if (err.response?.status === 401) {
-        setErrorMessage('Authentication failed: Missing or invalid Staff Access Key in current session.');
+        setErrorMessage('Authentication failed: Missing or expired Staff session.');
+      } else if (err.response?.status === 403) {
+        setErrorMessage('Security verification failed: Missing or invalid CSRF token.');
       } else {
-        setErrorMessage(err.response?.data?.detail || err.message || 'Failed to record resolution.');
+        setErrorMessage(formatBackendError(err, 'resolve'));
       }
     }
   };
@@ -74,6 +81,13 @@ export function RepairDialog({ isOpen, onClose, onResolve, report, waterPointNam
           <p className="italic text-[#334155] leading-relaxed">&ldquo;{report.description}&rdquo;</p>
         </div>
 
+        {/* Authenticated Staff Note */}
+        {staffName && (
+          <div className="text-[11px] text-[#5A6B87] bg-[#FAFBFD] border border-[#E2E8F0] rounded-lg px-3 py-2 mb-4">
+            Resolving as authenticated staff member: <strong className="text-[#102454] font-semibold">{staffName}</strong>
+          </div>
+        )}
+
         {/* Error Alert */}
         {errorMessage && (
           <div className="mb-4 p-3 bg-[#FDF2F2] border border-[#F8C9C9] rounded-xl text-xs font-medium text-[#D94B4B] flex items-center gap-2">
@@ -83,22 +97,6 @@ export function RepairDialog({ isOpen, onClose, onResolve, report, waterPointNam
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="staff-name-input" className="block text-xs font-semibold text-[#102454] uppercase tracking-wider mb-1.5">
-              Staff Member Name <span className="text-[#D94B4B]">*</span>
-            </label>
-            <input
-              id="staff-name-input"
-              type="text"
-              required
-              value={resolvedBy}
-              onChange={(e) => setResolvedBy(e.target.value)}
-              placeholder="e.g. Dave Miller (Plumbing Lead)"
-              className="w-full px-3 py-2 text-sm bg-white text-[#102454] border border-[#DFE6F0] rounded-lg focus:border-[#102454] focus:ring-1 focus:ring-[#102454] placeholder:text-[#8C9CB3]"
-              disabled={isSubmitting}
-            />
-          </div>
-
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label htmlFor="resolution-notes-input" className="text-xs font-semibold text-[#102454] uppercase tracking-wider">

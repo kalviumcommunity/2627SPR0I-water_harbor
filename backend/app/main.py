@@ -4,7 +4,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.db.session import get_db
-from app.routers import reports, water_points
+from app.routers import reports, staff, water_points
 
 app = FastAPI(title=settings.PROJECT_NAME)
 
@@ -20,6 +20,7 @@ app.add_middleware(
 # Router registration
 app.include_router(water_points.router, prefix="/api")
 app.include_router(reports.router, prefix="/api")
+app.include_router(staff.router, prefix="/api")
 
 
 @app.get("/")

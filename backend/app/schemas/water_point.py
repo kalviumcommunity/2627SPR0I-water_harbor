@@ -7,6 +7,7 @@ class WaterPointBase(BaseModel):
     name: str = Field(..., description="Water point name")
     location: str = Field(..., description="Campus location or description")
     building: Optional[str] = Field(None, description="Campus building name")
+    type: Optional[str] = Field(None, description="Optional water point dispenser type")
 
     @field_validator("name", "location")
     @classmethod

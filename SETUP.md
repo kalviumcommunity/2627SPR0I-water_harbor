@@ -61,13 +61,16 @@ Create a `.env` file in the project root directory based on `.env.example`:
 - `POSTGRES_DB`: PostgreSQL database name (`waterpoint_db`).
 - `DATABASE_URL`: Application database connection string.
 - `TEST_DATABASE_URL`: Mandatory dedicated test database connection string (must be separate from `DATABASE_URL`).
-- `STAFF_API_KEY`: Shared passkey for staff actions, sent via `X-Staff-Key` header (default: `campus-staff-key-2026`).
+- `SESSION_SECRET_KEY`: Random secret key used to sign staff session cookies (ephemeral random key generated if omitted).
+- `REPORT_RATE_LIMIT_MAX_REQUESTS`: Max anonymous reports allowed per client IP within the rate-limit window (default: `5`).
+- `REPORT_RATE_LIMIT_WINDOW_SECONDS`: Sliding window duration in seconds for `POST /api/reports` rate limiting (default: `60`).
 
 ### Backend Configuration (`backend/.env`)
 Create a `.env` file in the `backend/` directory based on `backend/.env.example`:
 - `DATABASE_URL`: Connection string for PostgreSQL (e.g., `postgresql+psycopg://postgres:postgres@localhost:5432/waterpoint_db`).
 - `TEST_DATABASE_URL`: Connection string for integration tests (e.g., `postgresql+psycopg://postgres:postgres@localhost:5432/waterpoint_test_db`).
-- `STAFF_API_KEY`: Shared passkey for staff actions, sent via `X-Staff-Key` header (default: `campus-staff-key-2026`).
+- `SESSION_SECRET_KEY`: Random secret key used to sign staff session cookies.
+- `REPORT_RATE_LIMIT_MAX_REQUESTS` / `REPORT_RATE_LIMIT_WINDOW_SECONDS`: IP rate limit for anonymous `POST /api/reports` submissions (default: `5` requests per `60` seconds).
 - `CORS_ORIGINS`: JSON array of allowed origins for the Vite dev server and deployed frontend.
 
 ### Frontend Configuration (`frontend/.env`)
