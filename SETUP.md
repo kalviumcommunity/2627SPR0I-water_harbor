@@ -61,7 +61,9 @@ Create a `.env` file in the project root directory based on `.env.example`:
 - `POSTGRES_DB`: PostgreSQL database name (`waterpoint_db`).
 - `DATABASE_URL`: Application database connection string.
 - `TEST_DATABASE_URL`: Mandatory dedicated test database connection string (must be separate from `DATABASE_URL`).
-- `SESSION_SECRET_KEY`: Random secret key used to sign staff session cookies (ephemeral random key generated if omitted).
+- `ENVIRONMENT`: Runtime environment (`development`, `test`, or `production`; default: `development`).
+- `SESSION_SECRET_KEY`: Secret key used to sign staff session cookies. **Required in `production` (minimum 32 characters, no ephemeral or legacy fallback)**; in `development`/`test`, an ephemeral random key is generated if omitted.
+- `SESSION_COOKIE_SECURE`: Enforces `Secure` attribute on session and CSRF cookies (required/`true` in `production`; auto-detected from HTTPS in development if omitted).
 - `REPORT_RATE_LIMIT_MAX_REQUESTS`: Max anonymous reports allowed per client IP within the rate-limit window (default: `5`).
 - `REPORT_RATE_LIMIT_WINDOW_SECONDS`: Sliding window duration in seconds for `POST /api/reports` rate limiting (default: `60`).
 

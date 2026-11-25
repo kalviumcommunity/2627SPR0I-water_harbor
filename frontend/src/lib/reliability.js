@@ -5,6 +5,17 @@ export const STAFF_REFRESH_INTERVAL_MS = 30000;
  * claiming success or masking backend unavailability.
  */
 export function formatBackendError(err, action = 'load') {
+  if (action === 'logout') {
+    const detail = err?.response?.data?.detail;
+    if (!err?.response) {
+      return 'Unable to reach the backend server. Logout failed and your staff session is still active.';
+    }
+    if (typeof detail === 'string' && detail.trim()) {
+      return `Logout failed: ${detail}`;
+    }
+    return 'Failed to sign out on the server. Your staff session is still active.';
+  }
+
   if (err?.response?.status === 401) {
     return 'Staff authorization failed. Check your staff key.';
   }
@@ -52,6 +63,65 @@ export function executeSingleFlight(inFlightRef, fn) {
 
   inFlightRef.current = promise;
   return promise;
+}
+
+/**
+ * Keyed single-flight coordinator: deduplicates concurrent requests only when
+ * `key` matches and `force` is false. Allows an authenticated refresh to
+ * supersede an in-flight unauthenticated refresh.
+ */
+export function executeKeyedSingleFlight(inFlightRef, { key, force = false }, fn) {
+  const current = inFlightRef.current;
+  if (current && !force && current.key === key) {
+    return current.promise;
+  }
+
+  let entry;
+  const promise = Promise.resolve()
+    .then(fn)
+    .finally(() => {
+      if (inFlightRef.current === entry) {
+        inFlightRef.current = null;
+      }
+    });
+
+  entry = { key, promise };
+  inFlightRef.current = entry;
+  return promise;
+}
+
+/**
+ * Fetches water points and either privileged staff reports (when authenticated)
+ * or public reports. Never falls back to public reports when an authenticated
+ * staff request fails.
+ */
+export async function fetchDashboardData({
+  isAuthenticated,
+  fetchWaterPoints,
+  fetchReports,
+  fetchStaffReports,
+}) {
+  const reportsPromise = isAuthenticated ? fetchStaffReports() : fetchReports();
+  const [waterPoints, reports] = await Promise.all([
+    fetchWaterPoints(),
+    reportsPromise,
+  ]);
+  return { waterPoints, reports };
+}
+
+/**
+ * Executes server-side logout and runs `onSuccess` only after the backend
+ * confirms logout succeeded. On failure, retains session state and invokes `onError`.
+ */
+export async function performStaffLogout({ apiStaffLogout, onSuccess, onError }) {
+  try {
+    const result = await apiStaffLogout();
+    await onSuccess(result);
+    return { ok: true, result };
+  } catch (err) {
+    onError?.(err);
+    throw err;
+  }
 }
 
 /**

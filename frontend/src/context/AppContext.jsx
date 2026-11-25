@@ -9,8 +9,14 @@ import {
   staffLogout as apiStaffLogout,
   submitReport,
   resolveReport,
+  setCsrfToken,
 } from '../lib/api';
-import { executeSingleFlight, formatBackendError } from '../lib/reliability';
+import {
+  executeKeyedSingleFlight,
+  fetchDashboardData,
+  formatBackendError,
+  performStaffLogout,
+} from '../lib/reliability';
 
 export function AppProvider({ children }) {
   const [waterPoints, setWaterPoints] = useState([]);
@@ -26,6 +32,7 @@ export function AppProvider({ children }) {
   const [staffAuthLoading, setStaffAuthLoading] = useState(true);
 
   const inFlightRefreshRef = useRef(null);
+  const requestGenerationRef = useRef(0);
   const isMountedRef = useRef(true);
 
   const showToast = useCallback((message, type = 'info', duration = 4000) => {
@@ -34,6 +41,13 @@ export function AppProvider({ children }) {
 
   const hideToast = useCallback(() => {
     setToast(null);
+  }, []);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
   }, []);
 
   // Restore staff session on mount from HttpOnly cookie
@@ -71,64 +85,110 @@ export function AppProvider({ children }) {
         hasOptionsObject && 'notifyOnError' in options
           ? Boolean(options.notifyOnError)
           : !silent;
+      const force = Boolean(
+        hasOptionsObject && 'force' in options ? options.force : false
+      );
+      const hasSessionOverride =
+        hasOptionsObject &&
+        Object.prototype.hasOwnProperty.call(options, 'sessionOverride');
+      const effectiveSession = hasSessionOverride
+        ? options.sessionOverride
+        : staffSession;
+      const isAuthenticated = Boolean(effectiveSession?.authenticated);
+      const authKey = isAuthenticated ? 'staff' : 'public';
 
-      if (inFlightRefreshRef.current) {
-        return inFlightRefreshRef.current;
+      const currentInFlight = inFlightRefreshRef.current;
+      if (currentInFlight && !force && currentInFlight.key === authKey) {
+        return currentInFlight.promise;
       }
 
-      return executeSingleFlight(inFlightRefreshRef, async () => {
-        if (silent) {
-          setIsRefreshing(true);
-        } else {
-          setLoading(true);
-        }
-        try {
-          // If staff is authenticated, fetch full staff reports; otherwise public reports
-          const reportsFetch = staffSession?.authenticated
-            ? fetchStaffReports().catch(() => fetchReports())
-            : fetchReports();
+      const myGeneration = ++requestGenerationRef.current;
 
-          const [wpData, repData] = await Promise.all([
-            fetchWaterPoints(),
-            reportsFetch,
-          ]);
-          if (!isMountedRef.current) {
-            return { ok: false, aborted: true };
+      return executeKeyedSingleFlight(
+        inFlightRefreshRef,
+        { key: authKey, force },
+        async () => {
+          if (silent) {
+            setIsRefreshing(true);
+          } else {
+            setLoading(true);
           }
-          setWaterPoints(wpData);
-          setReports(repData);
-          setError(null);
-          setLastUpdated(new Date().toISOString());
-          return { ok: true, waterPoints: wpData, reports: repData };
-        } catch (err) {
-          if (!isMountedRef.current) {
-            return { ok: false, aborted: true };
-          }
-          const message = formatBackendError(err, silent ? 'refresh' : 'load');
-          setError(message);
-          if (notifyOnError) {
-            showToast(message, 'error');
-          }
-          return { ok: false, error: err, message };
-        } finally {
-          if (isMountedRef.current) {
-            setLoading(false);
-            setIsRefreshing(false);
+          try {
+            const { waterPoints: wpData, reports: repData } =
+              await fetchDashboardData({
+                isAuthenticated,
+                fetchWaterPoints,
+                fetchReports,
+                fetchStaffReports,
+              });
+
+            if (
+              !isMountedRef.current ||
+              myGeneration !== requestGenerationRef.current
+            ) {
+              return { ok: false, aborted: true };
+            }
+
+            setWaterPoints(wpData);
+            setReports(repData);
+            setError(null);
+            setLastUpdated(new Date().toISOString());
+            return { ok: true, waterPoints: wpData, reports: repData };
+          } catch (err) {
+            if (
+              !isMountedRef.current ||
+              myGeneration !== requestGenerationRef.current
+            ) {
+              return { ok: false, aborted: true };
+            }
+
+            if (isAuthenticated && err?.response?.status === 401) {
+              setCsrfToken(null);
+              setStaffSession(null);
+              const message =
+                'Your staff session has expired. Please sign in again.';
+              setError(message);
+              if (notifyOnError) {
+                showToast(message, 'error');
+              }
+              return {
+                ok: false,
+                error: err,
+                message,
+                sessionExpired: true,
+              };
+            }
+
+            const message = formatBackendError(
+              err,
+              silent ? 'refresh' : 'load'
+            );
+            setError(message);
+            if (notifyOnError) {
+              showToast(message, 'error');
+            }
+            return { ok: false, error: err, message };
+          } finally {
+            if (
+              isMountedRef.current &&
+              myGeneration === requestGenerationRef.current
+            ) {
+              setLoading(false);
+              setIsRefreshing(false);
+            }
           }
         }
-      });
+      );
     },
     [showToast, staffSession]
   );
 
-  // Fetch live data from FastAPI backend on mount
+  // Fetch live data once initial staff session check completes (and when session changes)
   useEffect(() => {
-    isMountedRef.current = true;
-    void loadData({ silent: false, notifyOnError: false });
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, [loadData]);
+    if (!staffAuthLoading) {
+      void loadData({ silent: false, notifyOnError: false });
+    }
+  }, [loadData, staffAuthLoading]);
 
   // Compute active reports map: water_point_id -> active report
   const activeReportsMap = useMemo(() => {
@@ -272,6 +332,10 @@ export function AppProvider({ children }) {
       return updated;
     } catch (err) {
       setReports(previousReports);
+      if (err?.response?.status === 401) {
+        setCsrfToken(null);
+        setStaffSession(null);
+      }
       const message = formatBackendError(err, 'resolve');
       if (!err?.response) {
         setError(formatBackendError(err, 'load'));
@@ -285,26 +349,35 @@ export function AppProvider({ children }) {
   const loginStaff = async (accessKey) => {
     const session = await apiStaffLogin(accessKey);
     setStaffSession(session);
-    // Reload data with staff privileges
-    try {
-      const staffReports = await fetchStaffReports();
-      setReports(staffReports);
-    } catch {
-      // Fallback to normal refresh
-      void loadData({ silent: true });
-    }
+    // Fetch privileged staff reports immediately (never fall back to public reports)
+    await loadData({
+      silent: true,
+      notifyOnError: true,
+      force: true,
+      sessionOverride: session,
+    });
     return session;
   };
 
-  // Staff logout action
+  // Staff logout action: clear session & CSRF only after backend confirms logout
   const logoutStaff = async () => {
-    try {
-      await apiStaffLogout();
-    } finally {
-      setStaffSession(null);
-      // Reload public reports
-      void loadData({ silent: true });
-    }
+    return performStaffLogout({
+      apiStaffLogout,
+      onSuccess: async () => {
+        setStaffSession(null);
+        showToast('Signed out of staff session.', 'info');
+        await loadData({
+          silent: true,
+          notifyOnError: false,
+          force: true,
+          sessionOverride: null,
+        });
+      },
+      onError: (err) => {
+        const message = formatBackendError(err, 'logout');
+        showToast(message, 'error');
+      },
+    });
   };
 
   const value = {
