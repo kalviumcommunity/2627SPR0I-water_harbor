@@ -93,13 +93,10 @@ export async function fetchStaffSession() {
   return res.data;
 }
 
-export async function staffLogout() {
-  try {
-    const res = await apiClient.post('/api/staff/logout');
-    return res.data;
-  } finally {
-    setCsrfToken(null);
-  }
+export async function staffLogout(client = apiClient) {
+  const res = await client.post('/api/staff/logout');
+  setCsrfToken(null);
+  return res.data;
 }
 
 export async function fetchStaffReports() {
