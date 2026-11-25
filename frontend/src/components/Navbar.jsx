@@ -23,7 +23,7 @@ export function Navbar() {
     try {
       await logoutStaff();
     } catch {
-      // Ignore network errors on logout
+      // logoutStaff retains session state and displays an error toast
     }
   };
 

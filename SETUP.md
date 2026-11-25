@@ -41,7 +41,9 @@ Create a `.env` file in the project root directory based on `.env.example`:
 - `POSTGRES_DB`: PostgreSQL database name (`waterpoint_db`).
 - `DATABASE_URL`: Application database connection string.
 - `TEST_DATABASE_URL`: Dedicated test database connection string (must be separate from `DATABASE_URL`).
-- `SESSION_SECRET_KEY`: Random secret key used to sign staff session cookies.
+- `ENVIRONMENT`: Runtime environment (`development`, `test`, or `production`; default: `development`).
+- `SESSION_SECRET_KEY`: Signing key for staff sessions; required in production with at least 32 characters. Development/test can generate an ephemeral key if omitted.
+- `SESSION_COOKIE_SECURE`: Automatically enforced as `true` in production; auto-detected from HTTPS in development.
 - `REPORT_RATE_LIMIT_MAX_REQUESTS`: Max anonymous reports allowed per client IP within the window (default: `5`).
 - `REPORT_RATE_LIMIT_WINDOW_SECONDS`: Sliding window duration in seconds for `POST /api/reports` rate limiting (default: `60`).
 
@@ -49,7 +51,7 @@ Create a `.env` file in the project root directory based on `.env.example`:
 Create a `.env` file in `backend/` based on `backend/.env.example`:
 - `DATABASE_URL`: Connection string for PostgreSQL (e.g., `postgresql+psycopg://postgres:postgres@localhost:5432/waterpoint_db`).
 - `TEST_DATABASE_URL`: Connection string for integration tests (e.g., `postgresql+psycopg://postgres:postgres@localhost:5432/waterpoint_test_db`).
-- `SESSION_SECRET_KEY`: Random secret key used to sign staff session cookies.
+- `SESSION_SECRET_KEY`: Signing key for staff sessions; required in production with at least 32 characters.
 - `REPORT_RATE_LIMIT_MAX_REQUESTS` / `REPORT_RATE_LIMIT_WINDOW_SECONDS`: IP rate limit for anonymous report submissions.
 - `CORS_ORIGINS`: JSON array of allowed origins for the Vite dev server and deployed frontend.
 

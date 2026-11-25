@@ -122,6 +122,8 @@ def decode_staff_session_token(token: str) -> dict:
 
 def is_secure_cookie_request(request: Request) -> bool:
     """Determine whether cookies should carry the Secure attribute."""
+    if settings.ENVIRONMENT == "production":
+        return True
     if settings.SESSION_COOKIE_SECURE is not None:
         return settings.SESSION_COOKIE_SECURE
     return request.url.scheme == "https"
