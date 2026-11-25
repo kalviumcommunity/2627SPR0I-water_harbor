@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { X, CheckCircle2, AlertCircle } from 'lucide-react';
+import { formatBackendError } from '../lib/reliability';
 
 /**
  * Premium Modal Dialog for Facilities Staff to confirm a repair.
@@ -27,7 +28,7 @@ export function RepairDialog({ isOpen, onClose, onResolve, report, waterPointNam
       if (err.response?.status === 401) {
         setErrorMessage('Authentication failed: Missing or invalid Staff Access Key in current session.');
       } else {
-        setErrorMessage(err.response?.data?.detail || err.message || 'Failed to record resolution.');
+        setErrorMessage(formatBackendError(err, 'resolve'));
       }
     }
   };

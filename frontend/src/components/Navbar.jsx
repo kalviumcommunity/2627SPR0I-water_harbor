@@ -10,7 +10,7 @@ import { useApp } from '../context/useApp';
  */
 export function Navbar() {
   const location = useLocation();
-  const { isFallback } = useApp();
+  const { error, loading, isRefreshing, refreshData } = useApp();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Check active staff session
@@ -27,19 +27,26 @@ export function Navbar() {
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#DFE6F0]">
-      {/* Offline Mode Banner */}
-      {isFallback && (
-        <div
-          role="alert"
-          className="bg-[#FEF7EA] border-b border-[#FCE1B5] px-4 py-1.5 text-xs font-medium text-[#D58A00] flex items-center justify-between gap-3 max-w-7xl mx-auto"
-        >
-          <div className="flex items-center gap-2">
-            <AlertCircle className="w-3.5 h-3.5 shrink-0 text-[#D58A00]" />
-            <span>Operating in cached offline mode. Displaying local campus records.</span>
+      {/* Backend Connection Error Banner */}
+      {error && (
+        <div className="bg-[#FDF2F2] border-b border-[#F8C9C9]">
+          <div
+            role="alert"
+            className="px-4 sm:px-6 lg:px-8 py-2 text-xs font-medium text-[#B91C1C] flex items-center justify-between gap-3 max-w-7xl mx-auto"
+          >
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0 text-[#D94B4B]" />
+              <span>{error}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => refreshData({ silent: true, notifyOnError: true })}
+              disabled={loading || isRefreshing}
+              className="text-[11px] font-semibold bg-white text-[#B91C1C] hover:bg-[#FDF2F2] border border-[#F8C9C9] px-2.5 py-0.5 rounded transition-colors cursor-pointer shrink-0 disabled:opacity-50"
+            >
+              {loading || isRefreshing ? 'Retrying...' : 'Retry'}
+            </button>
           </div>
-          <span className="text-[10px] uppercase tracking-wider bg-[#D58A00]/10 text-[#D58A00] px-2 py-0.5 rounded font-mono font-medium">
-            Offline Cache
-          </span>
         </div>
       )}
 

@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Filter, RotateCcw, X, ArrowDown, Wrench, Building2, Droplets } from 'lucide-react';
+import { Search, Filter, RotateCcw, X, ArrowDown, Wrench, Building2, Droplets, AlertCircle } from 'lucide-react';
 import { useApp } from '../context/useApp';
 import WaterPointCard from '../components/WaterPointCard';
 import StatusTile from '../components/StatusTile';
@@ -20,6 +20,8 @@ export function DirectoryPage() {
     resolvedReportsMap,
     stats,
     loading,
+    isRefreshing,
+    error,
     refreshData,
   } = useApp();
 
@@ -295,12 +297,13 @@ export function DirectoryPage() {
             {/* Refresh Button */}
             <button
               type="button"
-              onClick={refreshData}
+              onClick={() => refreshData()}
+              disabled={loading || isRefreshing}
               title="Refresh live status from API"
               aria-label="Refresh status data"
-              className="p-2 bg-[#F8FAFC] hover:bg-[#EDF2F9] border border-[#DFE6F0] rounded-lg text-[#102454] transition-colors cursor-pointer flex items-center justify-center shrink-0"
+              className="p-2 bg-[#F8FAFC] hover:bg-[#EDF2F9] border border-[#DFE6F0] rounded-lg text-[#102454] transition-colors cursor-pointer flex items-center justify-center shrink-0 disabled:opacity-50"
             >
-              <RotateCcw className="w-3.5 h-3.5" />
+              <RotateCcw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
             </button>
           </div>
 
@@ -347,6 +350,40 @@ export function DirectoryPage() {
                   <div className="w-full h-10 bg-[#F1F5F9] rounded-lg" />
                 </div>
               ))}
+            </div>
+          ) : error && waterPoints.length === 0 ? (
+            <div
+              role="alert"
+              className="text-center py-14 px-4 bg-white border border-[#F8C9C9] rounded-xl shadow-xs max-w-md mx-auto space-y-2.5"
+            >
+              <div className="w-10 h-10 rounded-full bg-[#FDF2F2] border border-[#F8C9C9] flex items-center justify-center mx-auto text-[#D94B4B]">
+                <AlertCircle className="w-4 h-4" />
+              </div>
+              <h3 className="text-sm font-bold font-heading text-[#102454]">
+                Backend Unavailable
+              </h3>
+              <p className="text-xs text-[#5A6B87]">
+                {error}
+              </p>
+              <button
+                type="button"
+                onClick={() => refreshData()}
+                className="mt-1 px-3.5 py-1.5 bg-[#102454] hover:bg-[#162F6B] text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+              >
+                Retry Connection
+              </button>
+            </div>
+          ) : waterPoints.length === 0 ? (
+            <div className="text-center py-14 px-4 bg-white border border-[#DFE6F0] rounded-xl shadow-xs max-w-sm mx-auto space-y-2.5">
+              <div className="w-10 h-10 rounded-full bg-[#F3F6FC] border border-[#DFE6F0] flex items-center justify-center mx-auto text-[#5A6B87]">
+                <Droplets className="w-4 h-4" />
+              </div>
+              <h3 className="text-sm font-bold font-heading text-[#102454]">
+                No water points registered
+              </h3>
+              <p className="text-xs text-[#5A6B87]">
+                No campus water points have been added to the database yet.
+              </p>
             </div>
           ) : filteredWaterPoints.length === 0 ? (
             <div className="text-center py-14 px-4 bg-white border border-[#DFE6F0] rounded-xl shadow-xs max-w-sm mx-auto space-y-2.5">

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { AppContext } from './context';
 import {
   fetchWaterPoints,
@@ -6,17 +6,19 @@ import {
   submitReport,
   resolveReport,
 } from '../lib/api';
-import { initialSeedWaterPoints, initialSeedReports } from '../data/seedData';
-
-const STORAGE_WP_KEY = 'campus_waterpoint_data';
-const STORAGE_REPORTS_KEY = 'campus_waterpoint_reports';
+import { executeSingleFlight, formatBackendError } from '../lib/reliability';
 
 export function AppProvider({ children }) {
   const [waterPoints, setWaterPoints] = useState([]);
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isFallback, setIsFallback] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState(null);
+  const [lastUpdated, setLastUpdated] = useState(null);
   const [toast, setToast] = useState(null);
+
+  const inFlightRefreshRef = useRef(null);
+  const isMountedRef = useRef(true);
 
   const showToast = useCallback((message, type = 'info', duration = 4000) => {
     setToast({ message, type, duration });
@@ -26,83 +28,69 @@ export function AppProvider({ children }) {
     setToast(null);
   }, []);
 
-  // Initialize or fallback to localStorage seed data
-  const loadFallbackData = useCallback(() => {
-    try {
-      const savedWp = localStorage.getItem(STORAGE_WP_KEY);
-      const savedReports = localStorage.getItem(STORAGE_REPORTS_KEY);
+  const loadData = useCallback(
+    (options = {}) => {
+      const hasOptionsObject = options && typeof options === 'object';
+      const silent = Boolean(
+        hasOptionsObject && 'silent' in options ? options.silent : false
+      );
+      const notifyOnError =
+        hasOptionsObject && 'notifyOnError' in options
+          ? Boolean(options.notifyOnError)
+          : !silent;
 
-      const parsedWp = savedWp ? JSON.parse(savedWp) : initialSeedWaterPoints;
-      const parsedReports = savedReports ? JSON.parse(savedReports) : initialSeedReports;
+      if (inFlightRefreshRef.current) {
+        return inFlightRefreshRef.current;
+      }
 
-      setWaterPoints(parsedWp);
-      setReports(parsedReports);
-      setIsFallback(true);
-    } catch (e) {
-      console.warn('Could not read fallback from localStorage:', e);
-      setWaterPoints(initialSeedWaterPoints);
-      setReports(initialSeedReports);
-      setIsFallback(true);
-    }
-  }, []);
-
-  const saveFallbackData = useCallback((newWp, newReports) => {
-    try {
-      localStorage.setItem(STORAGE_WP_KEY, JSON.stringify(newWp));
-      localStorage.setItem(STORAGE_REPORTS_KEY, JSON.stringify(newReports));
-    } catch (e) {
-      console.warn('Could not write fallback to localStorage:', e);
-    }
-  }, []);
-
-  // Fetch data from live FastAPI backend on mount
-  useEffect(() => {
-    let ignore = false;
-    async function init() {
-      try {
-        const [wpData, repData] = await Promise.all([
-          fetchWaterPoints(),
-          fetchReports(),
-        ]);
-        if (!ignore) {
+      return executeSingleFlight(inFlightRefreshRef, async () => {
+        if (silent) {
+          setIsRefreshing(true);
+        } else {
+          setLoading(true);
+        }
+        try {
+          const [wpData, repData] = await Promise.all([
+            fetchWaterPoints(),
+            fetchReports(),
+          ]);
+          if (!isMountedRef.current) {
+            return { ok: false, aborted: true };
+          }
           setWaterPoints(wpData);
           setReports(repData);
-          setIsFallback(false);
-          saveFallbackData(wpData, repData);
-          setLoading(false);
+          setError(null);
+          setLastUpdated(new Date().toISOString());
+          return { ok: true, waterPoints: wpData, reports: repData };
+        } catch (err) {
+          if (!isMountedRef.current) {
+            return { ok: false, aborted: true };
+          }
+          const message = formatBackendError(err, silent ? 'refresh' : 'load');
+          setError(message);
+          if (notifyOnError) {
+            showToast(message, 'error');
+          }
+          return { ok: false, error: err, message };
+        } finally {
+          if (isMountedRef.current) {
+            setLoading(false);
+            setIsRefreshing(false);
+          }
         }
-      } catch (err) {
-        if (!ignore) {
-          console.warn('API unreachable, falling back to cached seed data:', err.message);
-          loadFallbackData();
-          setLoading(false);
-        }
-      }
-    }
-    init();
-    return () => {
-      ignore = true;
-    };
-  }, [loadFallbackData, saveFallbackData]);
+      });
+    },
+    [showToast]
+  );
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [wpData, repData] = await Promise.all([
-        fetchWaterPoints(),
-        fetchReports(),
-      ]);
-      setWaterPoints(wpData);
-      setReports(repData);
-      setIsFallback(false);
-      saveFallbackData(wpData, repData);
-    } catch (err) {
-      console.warn('API unreachable, falling back to cached seed data:', err.message);
-      loadFallbackData();
-    } finally {
-      setLoading(false);
-    }
-  }, [loadFallbackData, saveFallbackData]);
+  // Fetch live data from FastAPI backend on mount
+  useEffect(() => {
+    isMountedRef.current = true;
+    void loadData({ silent: false, notifyOnError: false });
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, [loadData]);
 
   // Compute active reports map: water_point_id -> active report
   const activeReportsMap = useMemo(() => {
@@ -173,7 +161,6 @@ export function AppProvider({ children }) {
       };
     }
 
-    // Optimistic report placeholder
     const tempReport = {
       id: `temp-${Date.now()}`,
       water_point_id: numericId,
@@ -185,22 +172,15 @@ export function AppProvider({ children }) {
       resolution_notes: null,
     };
 
-    // Apply optimistic update
     const previousReports = [...reports];
     setReports((prev) => [tempReport, ...prev]);
-
-    if (isFallback) {
-      const nextReports = [tempReport, ...previousReports];
-      saveFallbackData(waterPoints, nextReports);
-      showToast('Report recorded in offline mode.', 'success');
-      return { success: true, report: tempReport };
-    }
 
     try {
       const createdReport = await submitReport(numericId, trimmedDesc);
       setReports((prev) =>
         prev.map((r) => (r.id === tempReport.id ? createdReport : r))
       );
+      setError(null);
       showToast('Thank you! Your report has been noted.', 'success');
       return { success: true, report: createdReport };
     } catch (err) {
@@ -215,7 +195,11 @@ export function AppProvider({ children }) {
         };
       }
 
-      showToast(err.response?.data?.detail || err.message || 'Failed to submit report', 'error');
+      const message = formatBackendError(err, 'submit');
+      if (!err?.response) {
+        setError(formatBackendError(err, 'load'));
+      }
+      showToast(message, 'error');
       throw err;
     }
   };
@@ -239,38 +223,21 @@ export function AppProvider({ children }) {
       )
     );
 
-    if (isFallback) {
-      const updatedReports = previousReports.map((r) =>
-        r.id === reportId
-          ? {
-              ...r,
-              status: 'staff_confirmed_resolved',
-              resolved_at: nowIso,
-              resolved_by: resolvedBy,
-              resolution_notes: resolutionNotes || null,
-            }
-          : r
-      );
-      saveFallbackData(waterPoints, updatedReports);
-      showToast('Repair logged in offline mode.', 'success');
-      return;
-    }
-
     try {
       const updated = await resolveReport(reportId, resolvedBy, resolutionNotes);
       setReports((prev) =>
         prev.map((r) => (r.id === reportId ? updated : r))
       );
+      setError(null);
       showToast('Water point marked resolved!', 'success');
       return updated;
     } catch (err) {
       setReports(previousReports);
-      showToast(
-        err.response?.status === 401
-          ? 'Staff authorization failed. Check your staff key.'
-          : err.response?.data?.detail || 'Failed to resolve report',
-        'error'
-      );
+      const message = formatBackendError(err, 'resolve');
+      if (!err?.response) {
+        setError(formatBackendError(err, 'load'));
+      }
+      showToast(message, 'error');
       throw err;
     }
   };
@@ -282,7 +249,9 @@ export function AppProvider({ children }) {
     resolvedReportsMap,
     stats,
     loading,
-    isFallback,
+    isRefreshing,
+    error,
+    lastUpdated,
     toast,
     showToast,
     hideToast,

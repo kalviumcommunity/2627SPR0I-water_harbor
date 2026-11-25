@@ -1,8 +1,9 @@
-import { useState, useMemo } from 'react';
-import { KeyRound, User, LogOut, CheckCircle2, Clock, Wrench, ShieldAlert, MapPin } from 'lucide-react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import { KeyRound, User, LogOut, CheckCircle2, Clock, Wrench, ShieldAlert, MapPin, RotateCcw, AlertCircle } from 'lucide-react';
 import { useApp } from '../context/useApp';
 import RepairDialog from '../components/RepairDialog';
 import { formatRelativeTime, formatDateTime } from '../utils/formatTime';
+import { STAFF_REFRESH_INTERVAL_MS, startDashboardPolling } from '../lib/reliability';
 
 /**
  * StaffDashboard ("/staff")
@@ -18,8 +19,24 @@ export function StaffDashboard() {
   const {
     waterPoints,
     reports,
+    loading,
+    isRefreshing,
+    error,
+    lastUpdated,
+    refreshData,
     resolveReportAction,
   } = useApp();
+
+  // Automatically refresh issue and resolution data every 30s while dashboard is open
+  useEffect(() => {
+    return startDashboardPolling(() => {
+      void refreshData({ silent: true });
+    }, STAFF_REFRESH_INTERVAL_MS);
+  }, [refreshData]);
+
+  const handleManualRefresh = useCallback(() => {
+    void refreshData({ silent: true, notifyOnError: true });
+  }, [refreshData]);
 
   // Session storage staff authentication state
   const [staffName, setStaffName] = useState(() => sessionStorage.getItem('staff_name') || '');
@@ -204,6 +221,40 @@ export function StaffDashboard() {
         ) : (
           /* ── Authenticated Staff Operations ─────────────────────────────── */
           <>
+            {/* Refresh Status & Manual Refresh Toolbar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-[#5A6B87]">
+              <div className="flex items-center gap-2">
+                <Clock className="w-3.5 h-3.5 text-[#8C9CB3] shrink-0" />
+                <span>
+                  Auto-refreshes every 30s
+                  {lastUpdated && !error ? ` \u2022 Updated ${formatDateTime(lastUpdated)}` : ''}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleManualRefresh}
+                disabled={loading || isRefreshing}
+                aria-label="Refresh staff dashboard data"
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white hover:bg-[#F8FAFC] border border-[#DFE6F0] rounded-lg text-xs font-medium text-[#102454] shadow-xs transition-colors cursor-pointer disabled:opacity-50 self-start sm:self-auto"
+              >
+                <RotateCcw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                <span>{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
+              </button>
+            </div>
+
+            {error && (
+              <div
+                role="alert"
+                className="p-3.5 bg-[#FDF2F2] border border-[#F8C9C9] rounded-xl text-xs font-medium text-[#B91C1C] flex items-center justify-between gap-3"
+              >
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-[#D94B4B]" />
+                  <span>{error}</span>
+                </div>
+              </div>
+            )}
+
             {/* Summary Metrics Row */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
               <div className="bg-white rounded-xl p-4 sm:p-5 border border-[#DFE6F0] shadow-xs">
