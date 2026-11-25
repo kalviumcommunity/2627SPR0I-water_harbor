@@ -26,7 +26,6 @@ services:
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-gowrish}:${POSTGRES_PASSWORD:-waterharbor_dev}@db:5432/${POSTGRES_DB:-waterpoint_db}
-      STAFF_API_KEY: ${STAFF_API_KEY:-campus-staff-key-2026}
     ports:
       - "8000:8000"
     depends_on:

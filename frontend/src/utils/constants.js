@@ -43,10 +43,3 @@ export const STATUS_COLORS = {
     badge: 'badge-unknown',
   },
 };
-
-export const DEMO_STAFF_CREDENTIALS = {
-  email: 'facilities@christuniversity.in',
-  password: 'Password123!',
-  name: 'Facilities Maintenance Desk',
-  role: 'Facilities Staff',
-};

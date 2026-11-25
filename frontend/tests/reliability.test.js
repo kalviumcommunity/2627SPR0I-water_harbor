@@ -11,6 +11,7 @@ import {
   executeSingleFlight,
   startDashboardPolling,
 } from '../src/lib/reliability.js';
+import { setCsrfToken, getCsrfToken } from '../src/lib/api.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const srcDir = path.resolve(__dirname, '../src');
@@ -28,6 +29,57 @@ test('AppContext does not import seedData or use localStorage fallback', () => {
   assert.equal(appContextSource.includes('seedData'), false);
   assert.equal(appContextSource.includes('localStorage'), false);
   assert.equal(appContextSource.includes('isFallback'), false);
+});
+
+test('frontend files do not expose hardcoded demo credentials or keys', () => {
+  const filesToCheck = [
+    'pages/StaffDashboard.jsx',
+    'components/Navbar.jsx',
+    'components/RepairDialog.jsx',
+    'components/staff/StaffLoginForm.jsx',
+    'utils/constants.js',
+    'lib/api.js',
+  ];
+
+  for (const relPath of filesToCheck) {
+    const fullPath = path.join(srcDir, relPath);
+    if (!fs.existsSync(fullPath)) continue;
+    const content = fs.readFileSync(fullPath, 'utf8');
+
+    assert.equal(
+      content.includes('campus-staff-key-2026'),
+      false,
+      `${relPath} must not contain campus-staff-key-2026`
+    );
+    assert.equal(
+      content.includes('qwerth'),
+      false,
+      `${relPath} must not contain qwerth`
+    );
+    assert.equal(
+      content.includes('Password123!'),
+      false,
+      `${relPath} must not contain Password123!`
+    );
+    assert.equal(
+      content.includes('X-Staff-Key'),
+      false,
+      `${relPath} must not use legacy X-Staff-Key`
+    );
+    assert.equal(
+      content.includes("sessionStorage.getItem('staff_access_key')"),
+      false,
+      `${relPath} must not store access key in sessionStorage`
+    );
+  }
+});
+
+test('in-memory CSRF token getter and setter operate correctly', () => {
+  assert.equal(getCsrfToken(), null);
+  setCsrfToken('test-csrf-token-xyz');
+  assert.equal(getCsrfToken(), 'test-csrf-token-xyz');
+  setCsrfToken(null);
+  assert.equal(getCsrfToken(), null);
 });
 
 test('formatBackendError reports clear offline errors without claiming success', () => {

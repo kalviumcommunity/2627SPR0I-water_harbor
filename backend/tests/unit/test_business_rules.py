@@ -8,12 +8,12 @@ from app.crud import resolve_report
 
 
 @pytest.fixture
-def test_water_point(client: TestClient) -> dict:
+def test_water_point(client: TestClient, staff_auth: dict) -> dict:
     """Fixture to provide a water point for business rules testing."""
     res = client.post(
         "/api/water-points",
         json={"name": "Hostel 1 Ground Floor", "location": "Near Central Staircase"},
-        headers={"X-Staff-Key": settings.STAFF_API_KEY},
+        headers=staff_auth["headers"],
     )
     assert res.status_code == 201
     return res.json()
@@ -164,11 +164,17 @@ def test_new_report_allowed_after_resolution(client: TestClient, db: Session, te
     all_reports = reports_res.json()
     assert len(all_reports) == 2
 
-    # Verify report 1 details are intact
+    # Verify report 1 details are intact in public response (without internal staff fields)
     rep1_found = next(r for r in all_reports if r["id"] == report1_id)
     assert rep1_found["status"] == ReportStatus.STAFF_CONFIRMED_RESOLVED.value
-    assert rep1_found["resolved_by"] == "staff_officer_42"
+    assert rep1_found["resolved_at"] is not None
+    assert "resolved_by" not in rep1_found
     assert rep1_found["description"] == "First issue: leaking valve"
+
+    # Verify report 1 details in database directly preserve staff information
+    db_rep1 = db.query(IssueReport).filter(IssueReport.id == report1_id).first()
+    assert db_rep1 is not None
+    assert db_rep1.resolved_by == "staff_officer_42"
 
     # Verify report 2 is active
     rep2_found = next(r for r in all_reports if r["id"] == report2_id)

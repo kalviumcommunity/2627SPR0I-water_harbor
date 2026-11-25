@@ -1,28 +1,40 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
+from app.core.rate_limit import enforce_report_rate_limit
+from app.core.security import require_staff_session_with_csrf
 from app.db.session import get_db
-from app.schemas.report import IssueReportCreate, IssueReportResolve, IssueReportResponse
+from app.models.staff_account import StaffAccount
+from app.schemas.report import (
+    IssueReportCreate,
+    IssueReportResolve,
+    PublicIssueReportResponse,
+    StaffIssueReportResponse,
+)
 from app.services.report_service import report_service
-from app.core.security import verify_staff_key
 
 router = APIRouter(prefix="/reports", tags=["Issue Reports"])
 
 
-@router.post("", response_model=IssueReportResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=PublicIssueReportResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(enforce_report_rate_limit)],
+)
 def submit_report(
     report_in: IssueReportCreate,
     db: Session = Depends(get_db),
 ):
     """
     Submit an unavailable dispenser report.
-    Students can submit reports without creating accounts.
-    Enforces business rules preventing duplicate active unresolved reports.
+    Students can submit reports anonymously without creating accounts.
+    Protected by IP-based rate limiting and duplicate active report rules.
     """
     return report_service.create_issue_report(db, report_in)
 
 
-@router.get("", response_model=List[IssueReportResponse])
+@router.get("", response_model=List[PublicIssueReportResponse])
 def list_reports(
     status: Optional[str] = Query(
         None,
@@ -36,7 +48,7 @@ def list_reports(
     limit: int = Query(100, ge=1, le=500, description="Limit for pagination"),
     db: Session = Depends(get_db),
 ):
-    """Retrieve issue reports with optional status and water point filtering."""
+    """Retrieve public issue reports without exposing internal staff-only details."""
     return report_service.list_reports(
         db,
         status_filter=status,
@@ -46,40 +58,33 @@ def list_reports(
     )
 
 
-@router.get("/{id}", response_model=IssueReportResponse)
+@router.get("/{id}", response_model=PublicIssueReportResponse)
 def get_report(
     id: int,
     db: Session = Depends(get_db),
 ):
-    """Retrieve details of an issue report by ID."""
+    """Retrieve public details of an issue report by ID."""
     return report_service.get_report_or_404(db, report_id=id)
 
 
-@router.post("/{id}/resolve", response_model=IssueReportResponse)
-@router.patch("/{id}/resolve", response_model=IssueReportResponse)
+@router.post("/{id}/resolve", response_model=StaffIssueReportResponse)
+@router.patch("/{id}/resolve", response_model=StaffIssueReportResponse)
 def resolve_report(
     id: int,
     resolve_in: Optional[IssueReportResolve] = None,
-    resolved_by: Optional[str] = Query(None, description="Staff identifier or name (fallback)"),
-    _staff_key: str = Depends(verify_staff_key),
+    current_staff: StaffAccount = Depends(require_staff_session_with_csrf),
     db: Session = Depends(get_db),
 ):
     """
     Confirm resolution of an issue report.
-    Authorized facilities staff confirm resolution using X-Staff-Key header.
-    Updates report status to staff_confirmed_resolved and sets resolved_at timestamp.
+    Requires an authenticated staff session and CSRF token.
+    Derives resolving staff identity from the authenticated StaffAccount session.
     """
-    staff_name = "facilities_staff"
-    notes = None
-    if resolve_in:
-        staff_name = resolve_in.resolved_by or staff_name
-        notes = resolve_in.resolution_notes
-    elif resolved_by:
-        staff_name = resolved_by
+    notes = resolve_in.resolution_notes if resolve_in else None
 
     return report_service.resolve_report(
         db,
         report_id=id,
-        resolved_by=staff_name,
+        resolved_by=current_staff.display_name,
         resolution_notes=notes,
     )

@@ -3,6 +3,10 @@ import { AppContext } from './context';
 import {
   fetchWaterPoints,
   fetchReports,
+  fetchStaffReports,
+  fetchStaffSession,
+  staffLogin as apiStaffLogin,
+  staffLogout as apiStaffLogout,
   submitReport,
   resolveReport,
 } from '../lib/api';
@@ -17,6 +21,10 @@ export function AppProvider({ children }) {
   const [lastUpdated, setLastUpdated] = useState(null);
   const [toast, setToast] = useState(null);
 
+  // Authenticated Staff Session State (held in memory only)
+  const [staffSession, setStaffSession] = useState(null);
+  const [staffAuthLoading, setStaffAuthLoading] = useState(true);
+
   const inFlightRefreshRef = useRef(null);
   const isMountedRef = useRef(true);
 
@@ -26,6 +34,31 @@ export function AppProvider({ children }) {
 
   const hideToast = useCallback(() => {
     setToast(null);
+  }, []);
+
+  // Restore staff session on mount from HttpOnly cookie
+  useEffect(() => {
+    let active = true;
+    async function restoreSession() {
+      try {
+        const session = await fetchStaffSession();
+        if (active && session?.authenticated) {
+          setStaffSession(session);
+        }
+      } catch {
+        if (active) {
+          setStaffSession(null);
+        }
+      } finally {
+        if (active) {
+          setStaffAuthLoading(false);
+        }
+      }
+    }
+    void restoreSession();
+    return () => {
+      active = false;
+    };
   }, []);
 
   const loadData = useCallback(
@@ -50,9 +83,14 @@ export function AppProvider({ children }) {
           setLoading(true);
         }
         try {
+          // If staff is authenticated, fetch full staff reports; otherwise public reports
+          const reportsFetch = staffSession?.authenticated
+            ? fetchStaffReports().catch(() => fetchReports())
+            : fetchReports();
+
           const [wpData, repData] = await Promise.all([
             fetchWaterPoints(),
-            fetchReports(),
+            reportsFetch,
           ]);
           if (!isMountedRef.current) {
             return { ok: false, aborted: true };
@@ -80,7 +118,7 @@ export function AppProvider({ children }) {
         }
       });
     },
-    [showToast]
+    [showToast, staffSession]
   );
 
   // Fetch live data from FastAPI backend on mount
@@ -204,10 +242,11 @@ export function AppProvider({ children }) {
     }
   };
 
-  // Resolve an issue report (Staff action with X-Staff-Key)
-  const resolveReportAction = async (reportId, resolvedBy, resolutionNotes) => {
+  // Resolve an issue report (Staff action using HttpOnly cookie session)
+  const resolveReportAction = async (reportId, resolutionNotes) => {
     const previousReports = [...reports];
     const nowIso = new Date().toISOString();
+    const staffDisplayName = staffSession?.staff?.display_name || 'Staff';
 
     setReports((prev) =>
       prev.map((r) =>
@@ -216,7 +255,7 @@ export function AppProvider({ children }) {
               ...r,
               status: 'staff_confirmed_resolved',
               resolved_at: nowIso,
-              resolved_by: resolvedBy,
+              resolved_by: staffDisplayName,
               resolution_notes: resolutionNotes || null,
             }
           : r
@@ -224,7 +263,7 @@ export function AppProvider({ children }) {
     );
 
     try {
-      const updated = await resolveReport(reportId, resolvedBy, resolutionNotes);
+      const updated = await resolveReport(reportId, resolutionNotes);
       setReports((prev) =>
         prev.map((r) => (r.id === reportId ? updated : r))
       );
@@ -239,6 +278,32 @@ export function AppProvider({ children }) {
       }
       showToast(message, 'error');
       throw err;
+    }
+  };
+
+  // Staff login action
+  const loginStaff = async (accessKey) => {
+    const session = await apiStaffLogin(accessKey);
+    setStaffSession(session);
+    // Reload data with staff privileges
+    try {
+      const staffReports = await fetchStaffReports();
+      setReports(staffReports);
+    } catch {
+      // Fallback to normal refresh
+      void loadData({ silent: true });
+    }
+    return session;
+  };
+
+  // Staff logout action
+  const logoutStaff = async () => {
+    try {
+      await apiStaffLogout();
+    } finally {
+      setStaffSession(null);
+      // Reload public reports
+      void loadData({ silent: true });
     }
   };
 
@@ -258,6 +323,11 @@ export function AppProvider({ children }) {
     refreshData: loadData,
     addReport,
     resolveReportAction,
+    // Staff session methods & state
+    staffSession,
+    staffAuthLoading,
+    loginStaff,
+    logoutStaff,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

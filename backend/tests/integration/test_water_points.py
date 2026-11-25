@@ -1,13 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
-from app.core.config import settings
 from app.models import WaterPoint
-
-
-@pytest.fixture
-def staff_headers() -> dict:
-    return {"X-Staff-Key": settings.STAFF_API_KEY}
 
 
 def test_list_water_points_empty(client: TestClient):
@@ -17,13 +11,13 @@ def test_list_water_points_empty(client: TestClient):
     assert response.json() == []
 
 
-def test_create_water_point_success(client: TestClient, staff_headers: dict):
-    """Create a water point with valid data and staff authentication."""
+def test_create_water_point_success(client: TestClient, staff_auth: dict):
+    """Create a water point with valid data and staff session + CSRF token."""
     payload = {
         "name": "Academic Block A - Floor 1",
         "location": "Near room 102 water dispenser corner",
     }
-    response = client.post("/api/water-points", json=payload, headers=staff_headers)
+    response = client.post("/api/water-points", json=payload, headers=staff_auth["headers"])
     assert response.status_code == 201
     data = response.json()
     assert data["id"] is not None
@@ -32,7 +26,7 @@ def test_create_water_point_success(client: TestClient, staff_headers: dict):
     assert "created_at" in data
 
 
-def test_create_water_point_missing_staff_key_returns_401(client: TestClient):
+def test_create_water_point_unauthenticated_returns_401(client: TestClient):
     """Creating a water point without staff authentication returns 401 Unauthorized."""
     payload = {
         "name": "Academic Block A - Floor 1",
@@ -40,30 +34,27 @@ def test_create_water_point_missing_staff_key_returns_401(client: TestClient):
     }
     response = client.post("/api/water-points", json=payload)
     assert response.status_code == 401
-    assert "missing x-staff-key" in response.json()["detail"].lower()
+    assert "staff authentication required" in response.json()["detail"].lower()
 
 
-def test_create_water_point_invalid_staff_key_returns_401(client: TestClient):
-    """Creating a water point with an invalid staff key returns 401 Unauthorized."""
+def test_create_water_point_missing_csrf_returns_403(client: TestClient, staff_auth: dict):
+    """Creating a water point with session cookie but missing CSRF token returns 403 Forbidden."""
     payload = {
         "name": "Academic Block A - Floor 1",
         "location": "Near room 102 water dispenser corner",
     }
-    response = client.post(
-        "/api/water-points",
-        json=payload,
-        headers={"X-Staff-Key": "invalid-staff-key"},
-    )
-    assert response.status_code == 401
-    assert "invalid x-staff-key" in response.json()["detail"].lower()
+    # Without X-CSRF-Token header
+    response = client.post("/api/water-points", json=payload)
+    assert response.status_code == 403
+    assert "csrf verification failed" in response.json()["detail"].lower()
 
 
-def test_get_water_point_by_id(client: TestClient, staff_headers: dict):
+def test_get_water_point_by_id(client: TestClient, staff_auth: dict):
     """Retrieve an existing water point by ID (public endpoint)."""
     create_res = client.post(
         "/api/water-points",
         json={"name": "Hostel 3 Mess", "location": "Ground Floor Dining Hall"},
-        headers=staff_headers,
+        headers=staff_auth["headers"],
     )
     assert create_res.status_code == 201
     wp_id = create_res.json()["id"]
@@ -82,13 +73,13 @@ def test_get_water_point_not_found(client: TestClient):
     assert "not found" in response.json()["detail"].lower()
 
 
-def test_create_water_point_validation_empty_fields(client: TestClient, staff_headers: dict):
+def test_create_water_point_validation_empty_fields(client: TestClient, staff_auth: dict):
     """Validate that blank or whitespace-only names/locations are rejected."""
     # Blank name
     res1 = client.post(
         "/api/water-points",
         json={"name": "   ", "location": "Campus Center"},
-        headers=staff_headers,
+        headers=staff_auth["headers"],
     )
     assert res1.status_code == 422
 
@@ -96,23 +87,23 @@ def test_create_water_point_validation_empty_fields(client: TestClient, staff_he
     res2 = client.post(
         "/api/water-points",
         json={"name": "Library", "location": "   "},
-        headers=staff_headers,
+        headers=staff_auth["headers"],
     )
     assert res2.status_code == 422
 
     # Missing fields
-    res3 = client.post("/api/water-points", json={}, headers=staff_headers)
+    res3 = client.post("/api/water-points", json={}, headers=staff_auth["headers"])
     assert res3.status_code == 422
 
 
-def test_create_water_point_with_building(client: TestClient, staff_headers: dict):
+def test_create_water_point_with_building(client: TestClient, staff_auth: dict):
     """Create a water point with explicit building field."""
     payload = {
         "name": "Science Block 3rd Floor",
         "location": "Near Physics Lab 301",
         "building": "Science Block",
     }
-    response = client.post("/api/water-points", json=payload, headers=staff_headers)
+    response = client.post("/api/water-points", json=payload, headers=staff_auth["headers"])
     assert response.status_code == 201
     data = response.json()
     assert data["name"] == payload["name"]
@@ -135,13 +126,13 @@ def test_water_point_database_model_persistence(db: Session):
     assert retrieved.created_at is not None
 
 
-def test_public_endpoints_accessible_without_auth(client: TestClient, staff_headers: dict):
+def test_public_endpoints_accessible_without_auth(client: TestClient, staff_auth: dict):
     """Verify that student/public endpoints are accessible without authentication."""
     # Create a water point via staff
     wp_res = client.post(
         "/api/water-points",
         json={"name": "Public Water Point", "location": "Campus Plaza"},
-        headers=staff_headers,
+        headers=staff_auth["headers"],
     )
     assert wp_res.status_code == 201
     wp_id = wp_res.json()["id"]

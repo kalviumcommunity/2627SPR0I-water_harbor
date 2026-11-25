@@ -9,7 +9,7 @@ import { STAFF_REFRESH_INTERVAL_MS, startDashboardPolling } from '../lib/reliabi
  * StaffDashboard ("/staff")
  * Facilities operations portal designed with SaaS-grade restraint:
  * - Compact dark navy hero with operational badge & session bar
- * - Clean, focused authentication card
+ * - Clean, focused authentication card (access key only)
  * - Metric status tiles (Unresolved, Completed, Monitored)
  * - "Needs Attention" queue sorted oldest first
  * - Sleek repair modal dialog for resolution logging
@@ -25,6 +25,10 @@ export function StaffDashboard() {
     lastUpdated,
     refreshData,
     resolveReportAction,
+    staffSession,
+    staffAuthLoading,
+    loginStaff,
+    logoutStaff,
   } = useApp();
 
   // Automatically refresh issue and resolution data every 30s while dashboard is open
@@ -38,16 +42,14 @@ export function StaffDashboard() {
     void refreshData({ silent: true, notifyOnError: true });
   }, [refreshData]);
 
-  // Session storage staff authentication state
-  const [staffName, setStaffName] = useState(() => sessionStorage.getItem('staff_name') || '');
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return Boolean(sessionStorage.getItem('staff_name') && sessionStorage.getItem('staff_access_key'));
-  });
+  // Derived staff authentication state from AppContext HttpOnly session
+  const isAuthenticated = Boolean(staffSession?.authenticated);
+  const staffName = staffSession?.staff?.display_name || '';
 
   // Authentication form state
-  const [inputName, setInputName] = useState('');
   const [inputKey, setInputKey] = useState('');
   const [authError, setAuthError] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   // Dialog state for resolving
   const [selectedReport, setSelectedReport] = useState(null);
@@ -75,33 +77,45 @@ export function StaffDashboard() {
   }, [reports]);
 
   // Sign in handler
-  const handleSignIn = (e) => {
+  const handleSignIn = async (e) => {
     e.preventDefault();
-    if (!inputName.trim() || !inputKey.trim()) {
-      setAuthError('Please enter both your staff name and access key.');
+    if (!inputKey.trim()) {
+      setAuthError('Please enter your staff access key.');
       return;
     }
 
-    sessionStorage.setItem('staff_name', inputName.trim());
-    sessionStorage.setItem('staff_access_key', inputKey.trim());
-    setStaffName(inputName.trim());
-    setIsAuthenticated(true);
+    setIsLoggingIn(true);
     setAuthError('');
+    try {
+      await loginStaff(inputKey.trim());
+      setInputKey('');
+    } catch (err) {
+      if (err.response?.status === 401) {
+        setAuthError('Invalid staff access key. Access keys are case-sensitive.');
+      } else if (err.response?.status === 429) {
+        setAuthError(err.response?.data?.detail || 'Too many login attempts. Please wait a minute before retrying.');
+      } else {
+        setAuthError('Unable to authenticate with facilities server. Please verify your connection.');
+      }
+    } finally {
+      setIsLoggingIn(false);
+    }
   };
 
   // Sign out handler
-  const handleSignOut = () => {
-    sessionStorage.removeItem('staff_name');
-    sessionStorage.removeItem('staff_access_key');
-    setStaffName('');
-    setIsAuthenticated(false);
+  const handleSignOut = async () => {
+    try {
+      await logoutStaff();
+    } catch {
+      // Ignore network errors on logout
+    }
   };
 
   // Confirm repair resolution
-  const handleConfirmResolve = async (reportId, resolvedBy, resolutionNotes) => {
+  const handleConfirmResolve = async (reportId, resolutionNotes) => {
     setIsResolving(true);
     try {
-      await resolveReportAction(reportId, resolvedBy, resolutionNotes);
+      await resolveReportAction(reportId, resolutionNotes);
       setSelectedReport(null);
     } finally {
       setIsResolving(false);
@@ -165,7 +179,7 @@ export function StaffDashboard() {
                 Staff Authentication
               </h2>
               <p className="text-xs sm:text-sm text-[#5A6B87] mb-5">
-                Enter your staff member name and access key to authorize repair entries.
+                Enter your staff access key to verify your identity and authorize repair entries.
               </p>
 
               {authError && (
@@ -177,21 +191,6 @@ export function StaffDashboard() {
 
               <form onSubmit={handleSignIn} className="space-y-4">
                 <div>
-                  <label htmlFor="staff-name" className="block text-xs font-semibold text-[#102454] mb-1.5">
-                    Staff Member Name
-                  </label>
-                  <input
-                    id="staff-name"
-                    type="text"
-                    required
-                    value={inputName}
-                    onChange={(e) => setInputName(e.target.value)}
-                    placeholder="e.g. Dave Miller"
-                    className="w-full px-3.5 py-2.5 bg-white text-[#102454] border border-[#DFE6F0] rounded-lg text-xs sm:text-sm focus:border-[#102454] focus:ring-1 focus:ring-[#102454] outline-hidden placeholder:text-[#94A3B8] transition-colors"
-                  />
-                </div>
-
-                <div>
                   <label htmlFor="staff-key" className="block text-xs font-semibold text-[#102454] mb-1.5">
                     Staff Access Key
                   </label>
@@ -202,18 +201,17 @@ export function StaffDashboard() {
                     value={inputKey}
                     onChange={(e) => setInputKey(e.target.value)}
                     placeholder="Enter facilities passkey"
+                    disabled={isLoggingIn || staffAuthLoading}
                     className="w-full px-3.5 py-2.5 bg-white text-[#102454] border border-[#DFE6F0] rounded-lg text-xs sm:text-sm focus:border-[#102454] focus:ring-1 focus:ring-[#102454] outline-hidden placeholder:text-[#94A3B8] transition-colors"
                   />
-                  <p className="text-xs text-[#5A6B87] mt-1.5">
-                    Demo key: <code className="bg-[#F1F5F9] px-1.5 py-0.5 rounded text-[11px] font-mono text-[#102454] border border-[#E2E8F0]">campus-staff-key-2026</code>
-                  </p>
                 </div>
 
                 <button
                   type="submit"
-                  className="w-full py-2.5 px-4 rounded-lg bg-[#102454] hover:bg-[#183375] text-white font-semibold text-xs sm:text-sm shadow-xs transition-colors cursor-pointer"
+                  disabled={isLoggingIn || staffAuthLoading}
+                  className="w-full py-2.5 px-4 rounded-lg bg-[#102454] hover:bg-[#183375] text-white font-semibold text-xs sm:text-sm shadow-xs transition-colors cursor-pointer disabled:opacity-50"
                 >
-                  Sign In to Staff Desk
+                  {isLoggingIn ? 'Verifying...' : 'Sign In to Staff Desk'}
                 </button>
               </form>
             </div>
@@ -252,86 +250,88 @@ export function StaffDashboard() {
                   <AlertCircle className="w-4 h-4 shrink-0 text-[#D94B4B]" />
                   <span>{error}</span>
                 </div>
+                <button
+                  type="button"
+                  onClick={handleManualRefresh}
+                  disabled={loading || isRefreshing}
+                  className="px-2.5 py-1 bg-white hover:bg-[#FDF2F2] border border-[#F8C9C9] rounded-md font-semibold transition-colors cursor-pointer shrink-0 disabled:opacity-50"
+                >
+                  {loading || isRefreshing ? 'Retrying...' : 'Retry'}
+                </button>
               </div>
             )}
 
-            {/* Summary Metrics Row */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-              <div className="bg-white rounded-xl p-4 sm:p-5 border border-[#DFE6F0] shadow-xs">
-                <div className="flex items-center justify-between mb-2.5">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-[#D94B4B] shrink-0" />
-                    <span className="text-[11px] font-semibold text-[#5A6B87] uppercase tracking-wider">
-                      Unresolved Queue
-                    </span>
+            {/* Metric Status Tiles */}
+            <section aria-label="Operational Metrics">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                {/* Needs Attention */}
+                <div className="bg-white border border-[#DFE6F0] rounded-xl p-4 sm:p-5 shadow-xs">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-medium text-[#5A6B87]">Needs Attention</span>
+                    <span className="w-2 h-2 rounded-full bg-[#D94B4B]" />
                   </div>
-                </div>
-                <div className="text-2xl sm:text-3xl font-bold text-[#102454] tracking-tight tabular-nums font-heading">
-                  {unresolvedQueue.length}
-                </div>
-                <p className="text-xs text-[#5A6B87] mt-1">
-                  Active dispenser issues awaiting repair
-                </p>
-              </div>
-
-              <div className="bg-white rounded-xl p-4 sm:p-5 border border-[#DFE6F0] shadow-xs">
-                <div className="flex items-center justify-between mb-2.5">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-[#2F8A57] shrink-0" />
-                    <span className="text-[11px] font-semibold text-[#5A6B87] uppercase tracking-wider">
-                      Completed Repairs
-                    </span>
+                  <div className="text-2xl sm:text-3xl font-extrabold text-[#102454] font-heading">
+                    {unresolvedQueue.length}
                   </div>
-                </div>
-                <div className="text-2xl sm:text-3xl font-bold text-[#102454] tracking-tight tabular-nums font-heading">
-                  {completedLog.length}
-                </div>
-                <p className="text-xs text-[#5A6B87] mt-1">
-                  Total logged resolutions on record
-                </p>
-              </div>
-
-              <div className="bg-white rounded-xl p-4 sm:p-5 border border-[#DFE6F0] shadow-xs">
-                <div className="flex items-center justify-between mb-2.5">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-[#102454] shrink-0" />
-                    <span className="text-[11px] font-semibold text-[#5A6B87] uppercase tracking-wider">
-                      Total Monitored
-                    </span>
-                  </div>
-                </div>
-                <div className="text-2xl sm:text-3xl font-bold text-[#102454] tracking-tight tabular-nums font-heading">
-                  {waterPoints.length}
-                </div>
-                <p className="text-xs text-[#5A6B87] mt-1">
-                  Water dispensers across campus
-                </p>
-              </div>
-            </div>
-
-            {/* Unresolved Issues Queue */}
-            <section aria-label="Unresolved Reports Queue" className="space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 pb-1">
-                <div>
-                  <h2 className="text-base sm:text-lg font-bold font-heading text-[#102454]">
-                    Needs Attention ({unresolvedQueue.length})
-                  </h2>
-                  <p className="text-xs text-[#5A6B87]">
-                    Dispenser issues sorted oldest first to prioritize aging student notices
+                  <p className="text-[11px] text-[#5A6B87] mt-1">
+                    Unresolved issue {unresolvedQueue.length === 1 ? 'ticket' : 'tickets'}
                   </p>
                 </div>
+
+                {/* Completed Repairs */}
+                <div className="bg-white border border-[#DFE6F0] rounded-xl p-4 sm:p-5 shadow-xs">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-medium text-[#5A6B87]">Completed Repairs</span>
+                    <span className="w-2 h-2 rounded-full bg-[#2F8A57]" />
+                  </div>
+                  <div className="text-2xl sm:text-3xl font-extrabold text-[#102454] font-heading">
+                    {completedLog.length}
+                  </div>
+                  <p className="text-[11px] text-[#5A6B87] mt-1">Confirmed resolved repairs</p>
+                </div>
+
+                {/* Total Points Monitored */}
+                <div className="bg-white border border-[#DFE6F0] rounded-xl p-4 sm:p-5 shadow-xs">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-medium text-[#5A6B87]">Monitored Stations</span>
+                    <span className="w-2 h-2 rounded-full bg-[#102454]" />
+                  </div>
+                  <div className="text-2xl sm:text-3xl font-extrabold text-[#102454] font-heading">
+                    {waterPoints.length}
+                  </div>
+                  <p className="text-[11px] text-[#5A6B87] mt-1">Active campus dispensers</p>
+                </div>
+              </div>
+            </section>
+
+            {/* ── Unresolved Reports Queue ───────────────────────────────────── */}
+            <section aria-label="Unresolved Reports Queue" className="space-y-4">
+              <div className="flex items-center justify-between gap-3 border-b border-[#DFE6F0] pb-3">
+                <div>
+                  <h2 className="text-base sm:text-lg font-bold font-heading text-[#102454]">
+                    Needs Attention
+                  </h2>
+                  <p className="text-xs text-[#5A6B87]">
+                    Sorted by oldest notice first &bull; Requires physical verification & repair
+                  </p>
+                </div>
+
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#FDF2F2] text-[#D94B4B] border border-[#F9D3D3]">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#D94B4B]" />
+                  {unresolvedQueue.length} Pending
+                </span>
               </div>
 
               {unresolvedQueue.length === 0 ? (
-                <div className="text-center py-10 px-4 bg-white border border-[#DFE6F0] rounded-xl shadow-xs">
-                  <div className="w-9 h-9 rounded-full bg-[#EBF6EE] flex items-center justify-center mx-auto mb-2 text-[#2F8A57]">
-                    <CheckCircle2 className="w-5 h-5" />
+                <div className="bg-white border border-[#DFE6F0] rounded-xl p-8 sm:p-12 text-center shadow-xs">
+                  <div className="w-12 h-12 bg-[#EBF6EE] rounded-xl flex items-center justify-center mx-auto mb-3 text-[#2F8A57]">
+                    <CheckCircle2 className="w-6 h-6" />
                   </div>
-                  <h3 className="text-sm font-semibold text-[#102454]">
-                    All Campus Water Points Clear
+                  <h3 className="text-sm sm:text-base font-bold text-[#102454] font-heading mb-1">
+                    All campus dispensers operational
                   </h3>
-                  <p className="text-xs text-[#5A6B87] mt-0.5">
-                    No active unresolved issue notices at this time.
+                  <p className="text-xs text-[#5A6B87] max-w-sm mx-auto">
+                    Zero open notices reported by students or technicians. Good work!
                   </p>
                 </div>
               ) : (
@@ -341,7 +341,7 @@ export function StaffDashboard() {
                     return (
                       <div
                         key={report.id}
-                        className="bg-white border border-[#DFE6F0] rounded-xl p-4 sm:p-5 shadow-xs hover:border-[#CBD5E1] transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                        className="bg-white border border-[#DFE6F0] hover:border-[#CBD5E1] rounded-xl p-4 sm:p-5 shadow-xs transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4"
                       >
                         <div className="space-y-2 flex-1 min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
@@ -373,25 +373,27 @@ export function StaffDashboard() {
                             )}
                           </div>
 
-                          <div className="bg-[#FAFBFD] border border-[#E2E8F0] rounded-lg p-3 text-xs">
-                            <span className="font-semibold text-[#D94B4B] block mb-0.5">Reported Problem:</span>
-                            <p className="text-[#334155] italic">&ldquo;{report.description}&rdquo;</p>
-                          </div>
-
-                          <div className="flex items-center gap-1.5 text-[11px] text-[#5A6B87]">
-                            <Clock className="w-3.5 h-3.5 text-[#94A3B8]" />
-                            <span>Reported {formatRelativeTime(report.reported_at)} ({formatDateTime(report.reported_at)})</span>
+                          <div className="bg-[#FAFBFD] border border-[#E2E8F0] rounded-lg p-3 text-xs text-[#334155] space-y-1">
+                            <span className="font-semibold text-[#102454] block text-[11px] uppercase tracking-wider">
+                              Reported Problem
+                            </span>
+                            <p className="italic leading-relaxed">&ldquo;{report.description}&rdquo;</p>
+                            <div className="flex items-center gap-1 text-[11px] text-[#8C9CB3] pt-0.5">
+                              <Clock className="w-3 h-3" />
+                              <span>Reported {formatRelativeTime(report.reported_at)}</span>
+                            </div>
                           </div>
                         </div>
 
-                        <div className="shrink-0 w-full sm:w-auto pt-2 sm:pt-0">
+                        {/* Action CTA */}
+                        <div className="shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-[#DFE6F0] flex md:flex-col items-center justify-end">
                           <button
                             type="button"
                             onClick={() => setSelectedReport(report)}
-                            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-[#2F8A57] hover:bg-[#277449] rounded-lg shadow-xs transition-colors cursor-pointer"
+                            className="w-full md:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-[#2F8A57] hover:bg-[#277449] text-white shadow-xs transition-colors cursor-pointer"
                           >
                             <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>Confirm Resolved</span>
+                            <span>Confirm Repair</span>
                           </button>
                         </div>
                       </div>
@@ -401,20 +403,26 @@ export function StaffDashboard() {
               )}
             </section>
 
-            {/* Completed Repairs History */}
-            <section aria-label="Completed Repairs Log" className="space-y-4 pt-2">
-              <div>
-                <h2 className="text-base sm:text-lg font-bold font-heading text-[#102454]">
-                  Completed Repairs Log ({completedLog.length})
-                </h2>
-                <p className="text-xs text-[#5A6B87]">
-                  Historical ledger of maintenance completed by the campus facilities team
-                </p>
+            {/* ── Completed Repairs Log ──────────────────────────────────────── */}
+            <section aria-label="Completed Repairs Log" className="space-y-4">
+              <div className="flex items-center justify-between gap-3 border-b border-[#DFE6F0] pb-3">
+                <div>
+                  <h2 className="text-base sm:text-lg font-bold font-heading text-[#102454]">
+                    Completed Repairs
+                  </h2>
+                  <p className="text-xs text-[#5A6B87]">
+                    Audit ledger of confirmed repairs &bull; Sorted newest first
+                  </p>
+                </div>
+
+                <span className="text-xs font-medium text-[#5A6B87]">
+                  {completedLog.length} {completedLog.length === 1 ? 'record' : 'records'}
+                </span>
               </div>
 
               {completedLog.length === 0 ? (
-                <div className="text-center py-8 px-4 bg-white border border-[#DFE6F0] rounded-xl shadow-xs text-xs text-[#5A6B87]">
-                  No completed repairs recorded yet.
+                <div className="bg-white border border-[#DFE6F0] rounded-xl p-8 text-center text-[#5A6B87] text-xs shadow-xs">
+                  No repair resolutions logged yet.
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
@@ -431,7 +439,7 @@ export function StaffDashboard() {
                             Resolved
                           </span>
                           {rep.resolved_at && (
-                            <span className="text-[11px] text-[#94A3B8]">
+                            <span className="text-[11px] text-[#5A6B87]">
                               {formatRelativeTime(rep.resolved_at)}
                             </span>
                           )}
@@ -476,17 +484,16 @@ export function StaffDashboard() {
         )}
       </div>
 
-      {/* Repair Confirmation Dialog */}
-      {selectedReport && (
-        <RepairDialog
-          isOpen={Boolean(selectedReport)}
-          onClose={() => setSelectedReport(null)}
-          onResolve={handleConfirmResolve}
-          report={selectedReport}
-          waterPointName={waterPointsMap.get(selectedReport.water_point_id)?.name}
-          isSubmitting={isResolving}
-        />
-      )}
+      {/* Repair Resolution Modal Dialog */}
+      <RepairDialog
+        isOpen={Boolean(selectedReport)}
+        onClose={() => setSelectedReport(null)}
+        onResolve={handleConfirmResolve}
+        report={selectedReport}
+        waterPointName={selectedReport ? waterPointsMap.get(selectedReport.water_point_id)?.name : ''}
+        isSubmitting={isResolving}
+        staffName={staffName}
+      />
     </div>
   );
 }

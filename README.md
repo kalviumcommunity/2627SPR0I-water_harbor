@@ -143,7 +143,12 @@ Manually verify:
 
 - `DATABASE_URL`: PostgreSQL connection string (e.g. `postgresql+psycopg://postgres:postgres@localhost:5432/waterpoint_db`)
 - `TEST_DATABASE_URL`: Dedicated database connection string for tests (`waterpoint_test_db`)
-- `STAFF_API_KEY`: Shared secret key required via `X-Staff-Key` header for staff resolution endpoints (default: `campus-staff-key-2026`)
+- `SESSION_SECRET_KEY`: Random signing key for expiring HttpOnly staff session cookies (ephemeral random key generated if omitted)
+- `STAFF_SESSION_EXPIRE_MINUTES`: Staff session lifetime in minutes (default: `60`)
+- `REPORT_RATE_LIMIT_ENABLED`: Enable/disable IP rate limiting on `POST /api/reports` (default: `true`)
+- `REPORT_RATE_LIMIT_MAX_REQUESTS`: Max anonymous reports allowed per IP per window (default: `5`)
+- `REPORT_RATE_LIMIT_WINDOW_SECONDS`: Rate limit window in seconds (default: `60`)
+- `TRUSTED_PROXY_IPS`: Explicit trusted proxy IPs allowed to supply `X-Forwarded-For` (default: `[]`; arbitrary forwarded IP headers are ignored)
 - `CORS_ORIGINS`: Allowed origins list for CORS (defaults to `["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000", "http://localhost:8000"]`)
 
 ### Frontend (`frontend/.env`):
