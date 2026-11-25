@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, CheckCircle2, AlertCircle } from 'lucide-react';
 import { formatBackendError } from '../lib/reliability';
 
@@ -19,7 +19,25 @@ export function RepairDialog({
   const [resolutionNotes, setResolutionNotes] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
 
+  // Close on Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && !isSubmitting) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose, isSubmitting]);
+
   if (!isOpen || !report) return null;
+
+  const handleBackdropClick = (e) => {
+    if (e.target === e.currentTarget && !isSubmitting) {
+      onClose();
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -41,6 +59,7 @@ export function RepairDialog({
 
   return (
     <div
+      onClick={handleBackdropClick}
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#09132D]/60 backdrop-blur-xs transition-opacity"
       role="dialog"
       aria-modal="true"
