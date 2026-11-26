@@ -204,18 +204,6 @@ export function StaffDashboard() {
                     disabled={isLoggingIn || staffAuthLoading}
                     className="w-full px-3.5 py-2.5 bg-white text-[#102454] border border-[#DFE6F0] rounded-lg text-xs sm:text-sm focus:border-[#102454] focus:ring-1 focus:ring-[#102454] outline-hidden placeholder:text-[#94A3B8] transition-colors"
                   />
-                  <div className="flex items-center justify-between text-xs text-[#5A6B87] mt-2">
-                    <span>
-                      Demo passkey: <code className="bg-[#F1F5F9] px-1.5 py-0.5 rounded text-[11px] font-mono text-[#102454] border border-[#E2E8F0]">campus-staff-key-2026</code>
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setInputKey('campus-staff-key-2026')}
-                      className="text-[11px] font-semibold text-[#102454] hover:text-[#D6A63C] underline cursor-pointer"
-                    >
-                      Fill Demo Key
-                    </button>
-                  </div>
                 </div>
 
                 <button
