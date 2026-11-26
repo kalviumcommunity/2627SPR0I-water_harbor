@@ -30,3 +30,7 @@ backend/.env.*
 .pytest_cache/
 __pycache__/
 *.py[cod]
+
+# Local uploaded photos
+uploads/
+backend/uploads/

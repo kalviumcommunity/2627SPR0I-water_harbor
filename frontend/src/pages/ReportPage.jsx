@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
-import { AlertCircle, CheckCircle2, ArrowLeft, Send, AlertTriangle, Info, Clock, Building2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2, ArrowLeft, Send, AlertTriangle, Info, Clock, Building2, Camera, X } from 'lucide-react';
 import { useApp } from '../context/useApp';
 import Chip from '../components/Chip';
 import { formatBackendError } from '../lib/reliability';
@@ -14,31 +14,42 @@ const ISSUE_PRESETS = [
   'Filter warning light',
 ];
 
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+const ALLOWED_PHOTO_MIME = new Set(['image/jpeg', 'image/png', 'image/webp']);
+
 /**
- * Premium ReportPage ("/report")
- * Refined student issue submission workflow with clear input ergonomics,
- * subtle validation states, and duplicate handling.
+ * ReportPage ("/report")
+ * Anonymous student issue submission with optional photo upload.
  */
 export function ReportPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { waterPoints, activeReportsMap, addReport, error, loading } = useApp();
+  const { activeWaterPoints, activeReportsMap, addReport, error, loading } = useApp();
 
   const prefilledWpId = searchParams.get('wp') || '';
 
   const [selectedWpId, setSelectedWpId] = useState('');
   const [description, setDescription] = useState('');
   const [selectedChip, setSelectedChip] = useState('');
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [feedback, setFeedback] = useState(null); // { type: 'success' | 'duplicate' | 'error', message: string }
+  const [feedback, setFeedback] = useState(null);
+  const fileInputRef = useRef(null);
 
-  // Derive current effective water point ID
+  useEffect(() => {
+    return () => {
+      if (photoPreviewUrl) {
+        URL.revokeObjectURL(photoPreviewUrl);
+      }
+    };
+  }, [photoPreviewUrl]);
+
   const effectiveWpId =
     selectedWpId ||
     prefilledWpId ||
-    (waterPoints.length > 0 ? String(waterPoints[0].id) : '');
+    (activeWaterPoints.length > 0 ? String(activeWaterPoints[0].id) : '');
 
-  // Handle clicking issue presets chips
   const handleChipClick = (preset) => {
     if (selectedChip === preset) {
       setSelectedChip('');
@@ -47,6 +58,47 @@ export function ReportPage() {
       setSelectedChip(preset);
       setDescription(preset);
     }
+  };
+
+  const clearPhoto = () => {
+    if (photoPreviewUrl) {
+      URL.revokeObjectURL(photoPreviewUrl);
+    }
+    setPhotoFile(null);
+    setPhotoPreviewUrl(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handlePhotoChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      clearPhoto();
+      return;
+    }
+    if (!ALLOWED_PHOTO_MIME.has(file.type)) {
+      setFeedback({
+        type: 'error',
+        message: 'Unsupported image format. Please choose a JPEG, PNG, or WebP photo.',
+      });
+      clearPhoto();
+      return;
+    }
+    if (file.size > MAX_PHOTO_BYTES) {
+      setFeedback({
+        type: 'error',
+        message: 'Photo exceeds the 5 MB size limit.',
+      });
+      clearPhoto();
+      return;
+    }
+    if (photoPreviewUrl) {
+      URL.revokeObjectURL(photoPreviewUrl);
+    }
+    setFeedback(null);
+    setPhotoFile(file);
+    setPhotoPreviewUrl(URL.createObjectURL(file));
   };
 
   const handleSubmit = async (e) => {
@@ -71,7 +123,7 @@ export function ReportPage() {
     setFeedback(null);
 
     try {
-      const res = await addReport(effectiveWpId, description);
+      const res = await addReport(effectiveWpId, description, photoFile);
       if (res?.duplicate) {
         setFeedback({
           type: 'duplicate',
@@ -84,6 +136,7 @@ export function ReportPage() {
         });
         setDescription('');
         setSelectedChip('');
+        clearPhoto();
       }
     } catch (err) {
       if (err.isDuplicate || err.response?.status === 409) {
@@ -102,7 +155,7 @@ export function ReportPage() {
     }
   };
 
-  const selectedPoint = waterPoints.find((wp) => String(wp.id) === String(effectiveWpId));
+  const selectedPoint = activeWaterPoints.find((wp) => String(wp.id) === String(effectiveWpId));
   const hasActiveReport = effectiveWpId ? activeReportsMap.has(Number(effectiveWpId)) : false;
 
   return (
@@ -139,8 +192,7 @@ export function ReportPage() {
         </div>
 
         <div className="bg-white border border-[#DFE6F0] rounded-xl shadow-xs p-5 sm:p-7 space-y-5">
-          {/* Backend Availability Error */}
-          {error && !loading && waterPoints.length === 0 && (
+          {error && !loading && activeWaterPoints.length === 0 && (
             <div
               role="alert"
               className="p-3.5 rounded-lg border bg-[#FDF2F2] border-[#F8C9C9] text-[#B91C1C] flex items-start gap-2.5 text-xs"
@@ -152,7 +204,6 @@ export function ReportPage() {
             </div>
           )}
 
-          {/* Feedback Alerts */}
           {feedback && (
             <div
               role="alert"
@@ -207,14 +258,17 @@ export function ReportPage() {
                 className="w-full px-3 py-2 bg-white text-[#102454] border border-[#DFE6F0] rounded-lg text-xs sm:text-sm font-medium focus:border-[#102454] focus:ring-1 focus:ring-[#102454] cursor-pointer"
                 disabled={isSubmitting}
               >
-                {waterPoints.map((wp) => (
-                  <option key={wp.id} value={wp.id}>
-                    {wp.name} — {wp.building ? `${wp.building} (${wp.location})` : wp.location}
-                  </option>
-                ))}
+                {activeWaterPoints.length === 0 ? (
+                  <option value="">No active water points available</option>
+                ) : (
+                  activeWaterPoints.map((wp) => (
+                    <option key={wp.id} value={wp.id}>
+                      {wp.name} — {wp.building ? `${wp.building} (${wp.location})` : wp.location}
+                    </option>
+                  ))
+                )}
               </select>
 
-              {/* Selected Point Context Card */}
               {selectedPoint && (
                 <div className="p-2.5 bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg text-xs text-[#5A6B87] flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
@@ -283,6 +337,57 @@ export function ReportPage() {
               />
             </div>
 
+            {/* Step 4: Optional Photo Upload */}
+            <div className="space-y-2">
+              <label
+                htmlFor="issue-photo"
+                className="block text-xs font-semibold uppercase tracking-wider text-[#102454]"
+              >
+                4. Attach Photo (Optional)
+              </label>
+
+              {!photoPreviewUrl ? (
+                <label
+                  htmlFor="issue-photo"
+                  className="flex items-center justify-center gap-2 px-4 py-3 border border-dashed border-[#CBD5E1] hover:border-[#102454] bg-[#F8FAFC] hover:bg-[#EDF2F9] rounded-lg text-xs text-[#5A6B87] cursor-pointer transition-colors"
+                >
+                  <Camera className="w-4 h-4 text-[#102454]" />
+                  <span>Upload a JPEG, PNG, or WebP image (max 5 MB)</span>
+                </label>
+              ) : (
+                <div className="relative rounded-lg border border-[#DFE6F0] overflow-hidden bg-[#F8FAFC]">
+                  <img
+                    src={photoPreviewUrl}
+                    alt="Selected issue preview"
+                    className="w-full max-h-56 object-contain bg-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={clearPhoto}
+                    disabled={isSubmitting}
+                    aria-label="Remove attached photo"
+                    className="absolute top-2 right-2 inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-white/95 hover:bg-[#FDF2F2] text-[#B91C1C] border border-[#F8C9C9] text-[11px] font-semibold shadow-xs cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    <span>Remove</span>
+                  </button>
+                </div>
+              )}
+
+              <input
+                ref={fileInputRef}
+                id="issue-photo"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handlePhotoChange}
+                disabled={isSubmitting}
+                className="sr-only"
+              />
+              <p className="text-[11px] text-[#5A6B87] leading-relaxed">
+                Optional: only authenticated facilities staff can view submitted photos (they are not shown publicly). Location/EXIF metadata is stripped automatically &mdash; please avoid including faces or personal information.
+              </p>
+            </div>
+
             {/* Action Bar */}
             <div className="pt-1 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
               <div className="flex items-center gap-1 text-[#8C9CB3]">
@@ -302,7 +407,6 @@ export function ReportPage() {
           </form>
         </div>
 
-        {/* Guidance Note */}
         <div className="bg-white border border-[#DFE6F0] rounded-xl p-4 shadow-xs flex items-start gap-2.5 text-xs text-[#5A6B87] leading-relaxed">
           <Info className="w-4 h-4 text-[#102454] shrink-0 mt-0.5" />
           <p>

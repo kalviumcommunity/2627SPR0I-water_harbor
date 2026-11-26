@@ -167,7 +167,8 @@ def test_resolve_report_derives_identity_from_session(
         json={"water_point_id": wp["id"], "description": "Filter clogged"},
     ).json()
 
-    # Resolve report
+    # Claim & resolve report
+    assert client.post(f"/api/reports/{rep['id']}/claim", headers=staff_auth["headers"]).status_code == 200
     res = client.post(
         f"/api/reports/{rep['id']}/resolve",
         json={"resolution_notes": "Cleaned filter screen"},
@@ -202,6 +203,7 @@ def test_public_reports_hide_internal_staff_fields(
         json={"water_point_id": wp["id"], "description": "Taps dry"},
     ).json()
 
+    client.post(f"/api/reports/{rep['id']}/claim", headers=staff_auth["headers"])
     client.post(
         f"/api/reports/{rep['id']}/resolve",
         json={"resolution_notes": "Internal facilities maintenance: replaced diaphragm pump."},
@@ -259,6 +261,7 @@ def test_anonymous_report_rate_limiting_enforced(client: TestClient, staff_auth:
         )
         assert res.status_code == 201
         report_id = res.json()["id"]
+        client.post(f"/api/reports/{report_id}/claim", headers=staff_auth["headers"])
         client.post(f"/api/reports/{report_id}/resolve", headers=staff_auth["headers"])
 
     # 6th request from same IP should fail with 429
@@ -289,6 +292,7 @@ def test_untrusted_forwarded_ip_headers_are_ignored(client: TestClient, staff_au
         )
         assert res.status_code == 201
         report_id = res.json()["id"]
+        client.post(f"/api/reports/{report_id}/claim", headers=staff_auth["headers"])
         client.post(f"/api/reports/{report_id}/resolve", headers=staff_auth["headers"])
 
     # Attempt to spoof IP via X-Forwarded-For

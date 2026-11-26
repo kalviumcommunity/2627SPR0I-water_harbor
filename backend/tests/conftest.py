@@ -29,7 +29,12 @@ def db() -> Session:
     Provides a clean database session for each test.
     Truncates tables before the test starts to ensure isolation.
     """
-    from app.core.rate_limit import report_rate_limiter, staff_login_rate_limiter
+    from app.core.rate_limit import (
+        confirmation_rate_limiter,
+        report_rate_limiter,
+        staff_login_rate_limiter,
+    )
+    confirmation_rate_limiter.reset()
     report_rate_limiter.reset()
     staff_login_rate_limiter.reset()
 
@@ -37,7 +42,7 @@ def db() -> Session:
     with test_engine.connect() as conn:
         conn.execute(
             text(
-                "TRUNCATE TABLE issue_reports, water_points, staff_accounts RESTART IDENTITY CASCADE;"
+                "TRUNCATE TABLE report_confirmations, issue_reports, water_points, campus_locations, staff_accounts RESTART IDENTITY CASCADE;"
             )
         )
         conn.commit()
@@ -47,6 +52,7 @@ def db() -> Session:
         yield session
     finally:
         session.close()
+        confirmation_rate_limiter.reset()
         report_rate_limiter.reset()
         staff_login_rate_limiter.reset()
 

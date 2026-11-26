@@ -100,6 +100,29 @@ class SlidingWindowRateLimiter:
 
 report_rate_limiter = SlidingWindowRateLimiter()
 staff_login_rate_limiter = SlidingWindowRateLimiter()
+confirmation_rate_limiter = SlidingWindowRateLimiter()
+
+
+def enforce_confirmation_rate_limit(request: Request) -> None:
+    """
+    FastAPI dependency limiting anonymous "I've noticed this too" confirmations
+    per client IP. The IP is used only as an in-memory key and is never stored.
+    """
+    if not settings.REPORT_RATE_LIMIT_ENABLED:
+        return
+
+    client_ip = get_client_ip(request)
+    allowed, retry_after = confirmation_rate_limiter.check_and_record(
+        key=f"confirm:{client_ip}",
+        max_requests=settings.CONFIRMATION_RATE_LIMIT_MAX_REQUESTS,
+        window_seconds=settings.CONFIRMATION_RATE_LIMIT_WINDOW_SECONDS,
+    )
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many confirmations from this connection. Please wait before trying again.",
+            headers={"Retry-After": str(retry_after)},
+        )
 
 
 def enforce_report_rate_limit(request: Request) -> None:

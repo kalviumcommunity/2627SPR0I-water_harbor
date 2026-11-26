@@ -131,6 +131,7 @@ def test_resolve_report_endpoint_success(client: TestClient, sample_water_point:
     assert create_res.status_code == 201
     report_id = create_res.json()["id"]
 
+    assert client.post(f"/api/reports/{report_id}/claim", headers=staff_auth["headers"]).status_code == 200
     res = client.patch(
         f"/api/reports/{report_id}/resolve",
         headers=staff_auth["headers"],
@@ -153,6 +154,7 @@ def test_resolve_post_endpoint_with_notes(client: TestClient, sample_water_point
     assert create_res.status_code == 201
     report_id = create_res.json()["id"]
 
+    assert client.post(f"/api/reports/{report_id}/claim", headers=staff_auth["headers"]).status_code == 200
     res = client.post(
         f"/api/reports/{report_id}/resolve",
         json={
@@ -212,6 +214,7 @@ def test_resolve_already_resolved_report_endpoint(client: TestClient, sample_wat
     )
     report_id = create_res.json()["id"]
 
+    assert client.post(f"/api/reports/{report_id}/claim", headers=staff_auth["headers"]).status_code == 200
     res1 = client.patch(
         f"/api/reports/{report_id}/resolve",
         headers=staff_auth["headers"],

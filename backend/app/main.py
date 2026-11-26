@@ -1,12 +1,20 @@
+from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.db.session import get_db
-from app.routers import reports, staff, water_points
+from app.routers import campus_locations, reports, staff, water_points
 
-app = FastAPI(title=settings.PROJECT_NAME)
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    settings.validate_storage_configuration()
+    yield
+
+
+app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)
 
 # Middleware configuration
 app.add_middleware(
@@ -18,6 +26,7 @@ app.add_middleware(
 )
 
 # Router registration
+app.include_router(campus_locations.router, prefix="/api")
 app.include_router(water_points.router, prefix="/api")
 app.include_router(reports.router, prefix="/api")
 app.include_router(staff.router, prefix="/api")

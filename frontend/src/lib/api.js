@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL =
+export const API_BASE_URL =
   (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL) ||
   'http://localhost:8000';
 
@@ -15,9 +15,17 @@ export function getCsrfToken() {
   return inMemoryCsrfToken;
 }
 
+export function getReportPhotoUrl(photoUrl) {
+  if (!photoUrl) return null;
+  if (photoUrl.startsWith('http://') || photoUrl.startsWith('https://')) {
+    return photoUrl;
+  }
+  return `${API_BASE_URL}${photoUrl}`;
+}
+
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 8000,
+  timeout: 12000,
   withCredentials: true, // Enable sending HttpOnly cookies cross-origin / same-origin
   headers: {
     'Content-Type': 'application/json',
@@ -39,14 +47,12 @@ apiClient.interceptors.request.use(
 // Response interceptor to format errors
 apiClient.interceptors.response.use(
   (response) => {
-    // If backend returns a new CSRF token in response data, track it
     if (response.data && response.data.csrf_token) {
       setCsrfToken(response.data.csrf_token);
     }
     return response;
   },
   (error) => {
-    // Enrich 409 duplicate errors
     if (error.response?.status === 409) {
       error.isDuplicate = true;
     }
@@ -56,17 +62,67 @@ apiClient.interceptors.response.use(
 
 export const api = apiClient;
 
-export async function fetchWaterPoints() {
-  const res = await apiClient.get('/api/water-points');
+// ── Campus Locations ────────────────────────────────────────────────────────
+export async function fetchCampusLocations({ includeInactive = false } = {}) {
+  const res = await apiClient.get('/api/campus-locations', {
+    params: includeInactive ? { include_inactive: true } : undefined,
+  });
   return res.data;
 }
 
+export async function createCampusLocation(payload) {
+  const res = await apiClient.post('/api/campus-locations', payload);
+  return res.data;
+}
+
+export async function updateCampusLocation(locationId, payload) {
+  const res = await apiClient.patch(`/api/campus-locations/${locationId}`, payload);
+  return res.data;
+}
+
+// ── Water Points ────────────────────────────────────────────────────────────
+export async function fetchWaterPoints({ includeInactive = false, campusLocationId, type } = {}) {
+  const params = {};
+  if (includeInactive) params.include_inactive = true;
+  if (campusLocationId) params.campus_location_id = campusLocationId;
+  if (type) params.type = type;
+  const res = await apiClient.get('/api/water-points', { params });
+  return res.data;
+}
+
+export async function createWaterPoint(payload) {
+  const res = await apiClient.post('/api/water-points', payload);
+  return res.data;
+}
+
+export async function updateWaterPoint(waterPointId, payload) {
+  const res = await apiClient.patch(`/api/water-points/${waterPointId}`, payload);
+  return res.data;
+}
+
+// ── Public Reports & Confirmations ──────────────────────────────────────────
 export async function fetchReports() {
   const res = await apiClient.get('/api/reports');
   return res.data;
 }
 
-export async function submitReport(waterPointId, description) {
+export async function fetchMyConfirmations() {
+  const res = await apiClient.get('/api/reports/my-confirmations');
+  return res.data?.report_ids || [];
+}
+
+export async function submitReport(waterPointId, description, photoFile = null) {
+  if (photoFile) {
+    const formData = new FormData();
+    formData.append('water_point_id', String(Number(waterPointId)));
+    formData.append('description', description.trim());
+    formData.append('photo', photoFile);
+    const res = await apiClient.post('/api/reports', formData, {
+      headers: { 'Content-Type': undefined },
+    });
+    return res.data;
+  }
+
   const res = await apiClient.post('/api/reports', {
     water_point_id: Number(waterPointId),
     description: description.trim(),
@@ -74,7 +130,12 @@ export async function submitReport(waterPointId, description) {
   return res.data;
 }
 
-// Staff authenticated actions
+export async function confirmReport(reportId) {
+  const res = await apiClient.post(`/api/reports/${reportId}/confirm`);
+  return res.data;
+}
+
+// ── Staff Authenticated Actions ─────────────────────────────────────────────
 export async function staffLogin(accessKey) {
   const res = await apiClient.post('/api/staff/login', {
     access_key: accessKey.trim(),
@@ -101,6 +162,11 @@ export async function staffLogout(client = apiClient) {
 
 export async function fetchStaffReports() {
   const res = await apiClient.get('/api/staff/reports');
+  return res.data;
+}
+
+export async function claimReport(reportId) {
+  const res = await apiClient.post(`/api/reports/${reportId}/claim`);
   return res.data;
 }
 
