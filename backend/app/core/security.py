@@ -83,6 +83,7 @@ def create_staff_session_token(
         "sub": str(staff.id),
         "staff_identifier": staff.identifier,
         "display_name": staff.display_name,
+        "sv": staff.session_version,
         "csrf": csrf_token,
         "type": "staff_session",
         "iat": int(now.timestamp()),
@@ -207,6 +208,12 @@ def get_current_staff_session(
             detail="Staff session is no longer active.",
         )
 
+    if payload.get("sv") != staff.session_version:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Staff session has been invalidated. Please sign in again.",
+        )
+
     return staff, payload
 
 
@@ -215,6 +222,33 @@ def require_staff_session(
 ) -> StaffAccount:
     """Require a valid authenticated staff session for read operations."""
     staff, _ = session_data
+    return staff
+
+
+def get_optional_staff_session(
+    request: Request,
+    db: Session = Depends(get_db),
+) -> Optional[StaffAccount]:
+    """
+    Return the authenticated StaffAccount if a valid session cookie is present,
+    or None for anonymous/invalid requests. Never raises on missing/expired cookies.
+    """
+    token = request.cookies.get(settings.STAFF_SESSION_COOKIE_NAME)
+    if not token:
+        return None
+    try:
+        payload = decode_staff_session_token(token)
+        staff_id = int(payload["sub"])
+    except (HTTPException, KeyError, TypeError, ValueError):
+        return None
+
+    staff = (
+        db.query(StaffAccount)
+        .filter(StaffAccount.id == staff_id, StaffAccount.is_active.is_(True))
+        .first()
+    )
+    if not staff or payload.get("sv") != staff.session_version:
+        return None
     return staff
 
 
@@ -237,3 +271,49 @@ def require_staff_session_with_csrf(
         )
 
     return staff
+
+
+def verify_anonymous_mutation_origin(request: Request) -> None:
+    """
+    CSRF protection for anonymous cookie-authenticated mutations
+    (e.g. POST /api/reports/{id}/confirm).
+
+    - Rejects cross-site requests without a trusted Origin.
+    - When Origin is present, requires an exact match against settings.CORS_ORIGINS
+      (rejects 'null' and untrusted origins).
+    - When Origin is absent, allows only explicit same-origin Fetch Metadata
+      (Sec-Fetch-Site: same-origin) so browser cross-site requests cannot bypass
+      validation by omitting Origin.
+    """
+    allowed_origins = {o.rstrip("/") for o in settings.CORS_ORIGINS if o and o != "*"}
+    origin = request.headers.get("origin")
+    sec_fetch_site = (request.headers.get("sec-fetch-site") or "").strip().lower()
+
+    if origin is not None:
+        normalized_origin = origin.strip().rstrip("/")
+        if not normalized_origin or normalized_origin.lower() == "null":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Origin verification failed: null or empty origin is not permitted.",
+            )
+        if normalized_origin not in allowed_origins:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Origin verification failed: untrusted request origin.",
+            )
+        return
+
+    # Origin header absent: only permit explicit same-origin browser metadata
+    if sec_fetch_site == "same-origin":
+        return
+
+    if sec_fetch_site in ("cross-site", "same-site", "none"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cross-site request rejected: missing trusted Origin header.",
+        )
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Origin verification failed: Origin header is required.",
+    )

@@ -10,7 +10,7 @@ Students carrying bottles visit several campus water points before finding one t
 
 - **Incident Issue:** [#4 — Incident: Campus WaterPoint Board — Dispenser Availability & Resolution Tracking](https://github.com/kalviumcommunity/2627SPR0I-water_harbor/issues/4)
 - **Project Issues Board:** [https://github.com/kalviumcommunity/2627SPR0I-water_harbor/issues](https://github.com/kalviumcommunity/2627SPR0I-water_harbor/issues)
-- **Product Requirements Document:** [Docs/PRD.md](Docs/PRD.md)
+- **Product Requirements Document:** [docs/PRD.md](docs/PRD.md)
 
 ## Team Details
 

@@ -1,16 +1,25 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, Clock, Wrench } from 'lucide-react';
+import { MapPin, Clock, Wrench, ThumbsUp, Check, Camera } from 'lucide-react';
 import { formatRelativeTime } from '../utils/formatTime';
+import { formatWaterPointType, formatLocationPath } from '../lib/locationFilters';
 
 /**
  * Refined WaterPointCard Component:
  * - High scannability and clean visual hierarchy
  * - Precise status indicators with live colored dot badges
- * - Subtle report notes and quiet borders
- * - Understated action CTA
+ * - Anonymous "I've noticed this too" confirmation control on active reports
+ * - Optional report photo preview
  */
-export function WaterPointCard({ waterPoint, activeReport, recentResolvedReport }) {
-  // Compute human-reported status
+export function WaterPointCard({
+  waterPoint,
+  activeReport,
+  recentResolvedReport,
+  isConfirmed = false,
+  onConfirmReport,
+}) {
+  const [confirming, setConfirming] = useState(false);
+
   let computedStatus = 'no_recent_report';
   let statusLabel = 'No recent report';
   let badgeStyle = 'bg-[#F8FAFC] text-[#475569] border-[#DFE6F0]';
@@ -28,14 +37,34 @@ export function WaterPointCard({ waterPoint, activeReport, recentResolvedReport 
     dotColor = 'bg-[#2F8A57]';
   }
 
+  const locationPathLabel = formatLocationPath(waterPoint);
+  const typeLabel = formatWaterPointType(waterPoint.type);
+
+  const handleConfirmClick = async () => {
+    if (!activeReport || !onConfirmReport || isConfirmed || confirming) return;
+    setConfirming(true);
+    try {
+      await onConfirmReport(activeReport.id);
+    } finally {
+      setConfirming(false);
+    }
+  };
+
   return (
     <article className="wh-card p-4 sm:p-5 flex flex-col justify-between group">
       <div>
-        {/* Header: Facility Pill + Status Dot Badge */}
-        <div className="flex items-center justify-between gap-2 mb-3">
-          <span className="inline-block px-2 py-0.5 text-[11px] font-medium text-[#5A6B87] bg-[#F1F5F9] border border-[#E2E8F0] rounded">
-            {waterPoint.building || 'Campus Facility'}
-          </span>
+        {/* Header: Facility/Type Pills + Status Dot Badge */}
+        <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="inline-block px-2 py-0.5 text-[11px] font-medium text-[#5A6B87] bg-[#F1F5F9] border border-[#E2E8F0] rounded">
+              {waterPoint.building || 'Campus Facility'}
+            </span>
+            {typeLabel && (
+              <span className="inline-block px-2 py-0.5 text-[11px] font-medium text-[#102454] bg-[#EDF2F9] border border-[#DFE6F0] rounded">
+                {typeLabel}
+              </span>
+            )}
+          </div>
 
           <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-medium rounded-full border ${badgeStyle}`}>
             <span className={`w-1.5 h-1.5 rounded-full ${dotColor} shrink-0`} />
@@ -49,23 +78,68 @@ export function WaterPointCard({ waterPoint, activeReport, recentResolvedReport 
         </h3>
 
         {/* Location string */}
-        <div className="flex items-center gap-1.5 text-xs text-[#5A6B87] mb-3.5">
+        <div className="flex items-center gap-1.5 text-xs text-[#5A6B87] mb-1.5">
           <MapPin className="w-3.5 h-3.5 shrink-0 text-[#8C9CB3]" aria-hidden="true" />
           <span className="truncate">{waterPoint.location}</span>
         </div>
 
+        {locationPathLabel && locationPathLabel !== waterPoint.building && (
+          <p className="text-[11px] text-[#8C9CB3] mb-3 truncate" title={locationPathLabel}>
+            {locationPathLabel}
+          </p>
+        )}
+
         {/* Status Callout Box */}
         {computedStatus === 'reported_unavailable' && activeReport && (
-          <div className="bg-[#FDF2F2]/60 border border-[#F8C9C9] rounded-lg p-3 mb-3.5 text-xs space-y-1">
-            <span className="font-semibold text-[#B91C1C] block text-[11px] uppercase tracking-wider">
-              Reported Issue
-            </span>
+          <div className="bg-[#FDF2F2]/60 border border-[#F8C9C9] rounded-lg p-3 mb-3.5 text-xs space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-semibold text-[#B91C1C] text-[11px] uppercase tracking-wider">
+                Reported Issue
+              </span>
+              {activeReport.confirmation_count > 0 && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-white text-[#B91C1C] border border-[#F8C9C9]">
+                  {activeReport.confirmation_count} noticed
+                </span>
+              )}
+            </div>
             <p className="text-[#334155] italic leading-relaxed">
               &ldquo;{activeReport.description}&rdquo;
             </p>
-            <div className="flex items-center gap-1 text-[11px] text-[#8C9CB3] pt-0.5">
-              <Clock className="w-3 h-3" />
-              <span>Reported {formatRelativeTime(activeReport.reported_at)}</span>
+            {activeReport.has_photo && (
+              <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-white border border-[#F8C9C9] text-[10px] font-medium text-[#5A6B87]">
+                <Camera className="w-3 h-3 text-[#B91C1C]" />
+                <span>Photo attached for facilities staff review</span>
+              </div>
+            )}
+            <div className="flex items-center justify-between gap-2 pt-0.5">
+              <div className="flex items-center gap-1 text-[11px] text-[#8C9CB3]">
+                <Clock className="w-3 h-3" />
+                <span>Reported {formatRelativeTime(activeReport.reported_at)}</span>
+              </div>
+              {onConfirmReport && (
+                <button
+                  type="button"
+                  onClick={handleConfirmClick}
+                  disabled={isConfirmed || confirming}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold border transition-colors ${
+                    isConfirmed
+                      ? 'bg-[#EBF6EE] text-[#15803D] border-[#C6E7CF] cursor-default'
+                      : 'bg-white text-[#102454] border-[#DFE6F0] hover:bg-[#EDF2F9] cursor-pointer'
+                  } disabled:opacity-75`}
+                >
+                  {isConfirmed ? (
+                    <>
+                      <Check className="w-3 h-3" />
+                      <span>Confirmed</span>
+                    </>
+                  ) : (
+                    <>
+                      <ThumbsUp className="w-3 h-3" />
+                      <span>{confirming ? 'Saving...' : "I've noticed this too"}</span>
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </div>
         )}

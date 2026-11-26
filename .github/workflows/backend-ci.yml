@@ -67,7 +67,9 @@ jobs:
       - name: Run test database migrations
         env:
           DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/waterpoint_test_db
-        run: alembic upgrade head
+        run: |
+          alembic upgrade head
+          alembic check
 
       - name: Run backend tests
         run: pytest -v

@@ -28,6 +28,18 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 
+def _database_url() -> str:
+    """
+    Resolve the migration target URL. Programmatic callers (e.g. the test suite)
+    may pass an explicit URL via ``config.attributes["database_url"]``; otherwise
+    the application settings (DATABASE_URL) are used.
+    """
+    explicit = config.attributes.get("database_url")
+    if explicit:
+        return explicit
+    return settings.sqlalchemy_database_uri
+
+
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
 
@@ -40,7 +52,7 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = settings.sqlalchemy_database_uri
+    url = _database_url()
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -61,7 +73,7 @@ def run_migrations_online() -> None:
 
     """
     configuration = config.get_section(config.config_ini_section, {})
-    configuration["sqlalchemy.url"] = settings.sqlalchemy_database_uri
+    configuration["sqlalchemy.url"] = _database_url()
     connectable = engine_from_config(
         configuration,
         prefix="sqlalchemy.",

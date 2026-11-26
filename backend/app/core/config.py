@@ -48,6 +48,28 @@ class Settings(BaseSettings):
     REPORT_RATE_LIMIT_WINDOW_SECONDS: int = 60
     TRUSTED_PROXY_IPS: List[str] = []
 
+    # Anonymous "I've noticed this too" confirmations (per client IP; IP is never stored)
+    CONFIRMATION_RATE_LIMIT_MAX_REQUESTS: int = 20
+    CONFIRMATION_RATE_LIMIT_WINDOW_SECONDS: int = 60
+    PARTICIPANT_COOKIE_NAME: str = "wh_participant"
+    PARTICIPANT_COOKIE_MAX_AGE_DAYS: int = 180
+
+    # Report photo uploads
+    PHOTO_UPLOADS_ENABLED: bool = True
+    PHOTO_MAX_BYTES: int = 5 * 1024 * 1024
+    REPORT_MAX_BODY_BYTES: int = 5 * 1024 * 1024 + 256 * 1024
+    PHOTO_MAX_PIXELS: int = 40_000_000
+    # Storage backend: "local" (development only) or "s3" (S3-compatible object storage,
+    # e.g. Cloudflare R2 / AWS S3 / Backblaze B2). Production must use "s3".
+    STORAGE_BACKEND: Literal["local", "s3"] = "local"
+    LOCAL_STORAGE_DIR: str = str(BASE_DIR / "uploads")
+    S3_BUCKET: Optional[str] = None
+    S3_REGION: Optional[str] = None
+    S3_ENDPOINT_URL: Optional[str] = None
+    S3_ACCESS_KEY_ID: Optional[str] = None
+    S3_SECRET_ACCESS_KEY: Optional[str] = None
+    S3_KEY_PREFIX: str = "report-photos/"
+
     # CORS configuration
     CORS_ORIGINS: List[str] = [
         "http://localhost:5173",
@@ -97,7 +119,29 @@ class Settings(BaseSettings):
                 )
             if self.SESSION_COOKIE_SECURE is None:
                 self.SESSION_COOKIE_SECURE = True
+        if self.SESSION_COOKIE_SAMESITE == "none" and self.SESSION_COOKIE_SECURE is False:
+            raise ValueError("SESSION_COOKIE_SAMESITE=none requires SESSION_COOKIE_SECURE=true.")
         return self
+
+    def validate_storage_configuration(self) -> None:
+        """
+        Validate photo storage configuration. Called at application startup so a
+        production deployment refuses to start with ephemeral/local photo storage.
+        """
+        if not self.PHOTO_UPLOADS_ENABLED:
+            return
+        if self.ENVIRONMENT == "production" and self.STORAGE_BACKEND != "s3":
+            raise ValueError(
+                "Production photo uploads require STORAGE_BACKEND=s3 (persistent "
+                "external object storage). Local container storage is ephemeral."
+            )
+        if self.STORAGE_BACKEND == "s3" and (
+            not self.S3_BUCKET or not self.S3_ACCESS_KEY_ID or not self.S3_SECRET_ACCESS_KEY
+        ):
+            raise ValueError(
+                "STORAGE_BACKEND=s3 requires S3_BUCKET, S3_ACCESS_KEY_ID and "
+                "S3_SECRET_ACCESS_KEY to be configured."
+            )
 
     @property
     def session_secret(self) -> str:

@@ -1,13 +1,21 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { AppContext } from './context';
 import {
+  fetchCampusLocations,
+  createCampusLocation as apiCreateCampusLocation,
+  updateCampusLocation as apiUpdateCampusLocation,
   fetchWaterPoints,
+  createWaterPoint as apiCreateWaterPoint,
+  updateWaterPoint as apiUpdateWaterPoint,
   fetchReports,
   fetchStaffReports,
   fetchStaffSession,
+  fetchMyConfirmations,
   staffLogin as apiStaffLogin,
   staffLogout as apiStaffLogout,
   submitReport,
+  confirmReport as apiConfirmReport,
+  claimReport as apiClaimReport,
   resolveReport,
   setCsrfToken,
 } from '../lib/api';
@@ -20,7 +28,9 @@ import {
 
 export function AppProvider({ children }) {
   const [waterPoints, setWaterPoints] = useState([]);
+  const [campusLocations, setCampusLocations] = useState([]);
   const [reports, setReports] = useState([]);
+  const [confirmedReportIds, setConfirmedReportIds] = useState(() => new Set());
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState(null);
@@ -114,13 +124,20 @@ export function AppProvider({ children }) {
             setLoading(true);
           }
           try {
-            const { waterPoints: wpData, reports: repData } =
-              await fetchDashboardData({
-                isAuthenticated,
-                fetchWaterPoints,
-                fetchReports,
-                fetchStaffReports,
-              });
+            const [{ waterPoints: wpData, reports: repData }, locData, myConf] =
+              await Promise.all([
+                fetchDashboardData({
+                  isAuthenticated,
+                  fetchWaterPoints: () =>
+                    fetchWaterPoints({ includeInactive: isAuthenticated }),
+                  fetchReports,
+                  fetchStaffReports,
+                }),
+                fetchCampusLocations({ includeInactive: isAuthenticated }).catch(
+                  () => []
+                ),
+                fetchMyConfirmations().catch(() => []),
+              ]);
 
             if (
               !isMountedRef.current ||
@@ -131,6 +148,8 @@ export function AppProvider({ children }) {
 
             setWaterPoints(wpData);
             setReports(repData);
+            setCampusLocations(locData);
+            setConfirmedReportIds(new Set(myConf));
             setError(null);
             setLastUpdated(new Date().toISOString());
             return { ok: true, waterPoints: wpData, reports: repData };
@@ -190,6 +209,12 @@ export function AppProvider({ children }) {
     }
   }, [loadData, staffAuthLoading]);
 
+  // Active water points for public directory & student reporting
+  const activeWaterPoints = useMemo(
+    () => waterPoints.filter((wp) => wp.is_active !== false),
+    [waterPoints]
+  );
+
   // Compute active reports map: water_point_id -> active report
   const activeReportsMap = useMemo(() => {
     const map = new Map();
@@ -222,13 +247,13 @@ export function AppProvider({ children }) {
     return map;
   }, [reports]);
 
-  // Compute overall status counts
+  // Compute overall status counts across active stations
   const stats = useMemo(() => {
     let reportedUnavailable = 0;
     let staffConfirmedResolved = 0;
     let noRecentReport = 0;
 
-    for (const wp of waterPoints) {
+    for (const wp of activeWaterPoints) {
       if (activeReportsMap.has(wp.id)) {
         reportedUnavailable += 1;
       } else if (resolvedReportsMap.has(wp.id)) {
@@ -239,19 +264,18 @@ export function AppProvider({ children }) {
     }
 
     return {
-      total: waterPoints.length,
+      total: activeWaterPoints.length,
       reportedUnavailable,
       staffConfirmedResolved,
       noRecentReport,
     };
-  }, [waterPoints, activeReportsMap, resolvedReportsMap]);
+  }, [activeWaterPoints, activeReportsMap, resolvedReportsMap]);
 
-  // Submit a student report (anonymous, 1-500 chars)
-  const addReport = async (waterPointId, description) => {
+  // Submit a student report (anonymous, 1-500 chars, optional photo)
+  const addReport = async (waterPointId, description, photoFile = null) => {
     const numericId = Number(waterPointId);
     const trimmedDesc = description.trim();
 
-    // Check if duplicate locally first
     if (activeReportsMap.has(numericId)) {
       return {
         duplicate: true,
@@ -259,31 +283,13 @@ export function AppProvider({ children }) {
       };
     }
 
-    const tempReport = {
-      id: `temp-${Date.now()}`,
-      water_point_id: numericId,
-      description: trimmedDesc,
-      status: 'reported_unavailable',
-      reported_at: new Date().toISOString(),
-      resolved_at: null,
-      resolved_by: null,
-      resolution_notes: null,
-    };
-
-    const previousReports = [...reports];
-    setReports((prev) => [tempReport, ...prev]);
-
     try {
-      const createdReport = await submitReport(numericId, trimmedDesc);
-      setReports((prev) =>
-        prev.map((r) => (r.id === tempReport.id ? createdReport : r))
-      );
+      const createdReport = await submitReport(numericId, trimmedDesc, photoFile);
+      setReports((prev) => [createdReport, ...prev]);
       setError(null);
       showToast('Thank you! Your report has been noted.', 'success');
       return { success: true, report: createdReport };
     } catch (err) {
-      setReports(previousReports);
-
       if (err.isDuplicate || err.response?.status === 409) {
         return {
           duplicate: true,
@@ -298,6 +304,53 @@ export function AppProvider({ children }) {
         setError(formatBackendError(err, 'load'));
       }
       showToast(message, 'error');
+      throw err;
+    }
+  };
+
+  // Anonymous student confirmation ("I've noticed this too")
+  const confirmReportAction = async (reportId) => {
+    try {
+      const result = await apiConfirmReport(reportId);
+      setConfirmedReportIds((prev) => new Set(prev).add(reportId));
+      setReports((prev) =>
+        prev.map((r) =>
+          r.id === reportId
+            ? { ...r, confirmation_count: result.confirmation_count }
+            : r
+        )
+      );
+      showToast('Confirmation recorded. Thank you!', 'success');
+      return result;
+    } catch (err) {
+      if (err?.response?.status === 409) {
+        setConfirmedReportIds((prev) => new Set(prev).add(reportId));
+        showToast('You have already confirmed this issue.', 'info');
+        return { report_id: reportId, alreadyConfirmed: true };
+      }
+      showToast(formatBackendError(err, 'submit'), 'error');
+      throw err;
+    }
+  };
+
+  // Staff claim action (atomic backend assignment)
+  const claimReportAction = async (reportId) => {
+    try {
+      const updated = await apiClaimReport(reportId);
+      setReports((prev) =>
+        prev.map((r) => (r.id === reportId ? updated : r))
+      );
+      showToast('Issue claimed and assigned to you.', 'success');
+      return updated;
+    } catch (err) {
+      if (err?.response?.status === 401) {
+        setCsrfToken(null);
+        setStaffSession(null);
+      } else if (err?.response?.status === 409) {
+        // Refresh so this staff member sees who claimed it first
+        void loadData({ silent: true, notifyOnError: false, force: true });
+      }
+      showToast(formatBackendError(err, 'resolve'), 'error');
       throw err;
     }
   };
@@ -345,11 +398,39 @@ export function AppProvider({ children }) {
     }
   };
 
+  // Staff water-point & campus-location management actions
+  const createCampusLocationAction = async (payload) => {
+    const created = await apiCreateCampusLocation(payload);
+    await loadData({ silent: true, notifyOnError: false, force: true });
+    showToast(`Location "${created.name}" created.`, 'success');
+    return created;
+  };
+
+  const updateCampusLocationAction = async (locationId, payload) => {
+    const updated = await apiUpdateCampusLocation(locationId, payload);
+    await loadData({ silent: true, notifyOnError: false, force: true });
+    showToast(`Location "${updated.name}" updated.`, 'success');
+    return updated;
+  };
+
+  const createWaterPointAction = async (payload) => {
+    const created = await apiCreateWaterPoint(payload);
+    await loadData({ silent: true, notifyOnError: false, force: true });
+    showToast(`Water point "${created.name}" created.`, 'success');
+    return created;
+  };
+
+  const updateWaterPointAction = async (waterPointId, payload) => {
+    const updated = await apiUpdateWaterPoint(waterPointId, payload);
+    await loadData({ silent: true, notifyOnError: false, force: true });
+    showToast(`Water point "${updated.name}" updated.`, 'success');
+    return updated;
+  };
+
   // Staff login action
   const loginStaff = async (accessKey) => {
     const session = await apiStaffLogin(accessKey);
     setStaffSession(session);
-    // Fetch privileged staff reports immediately (never fall back to public reports)
     await loadData({
       silent: true,
       notifyOnError: true,
@@ -382,7 +463,10 @@ export function AppProvider({ children }) {
 
   const value = {
     waterPoints,
+    activeWaterPoints,
+    campusLocations,
     reports,
+    confirmedReportIds,
     activeReportsMap,
     resolvedReportsMap,
     stats,
@@ -395,8 +479,13 @@ export function AppProvider({ children }) {
     hideToast,
     refreshData: loadData,
     addReport,
+    confirmReportAction,
+    claimReportAction,
     resolveReportAction,
-    // Staff session methods & state
+    createCampusLocationAction,
+    updateCampusLocationAction,
+    createWaterPointAction,
+    updateWaterPointAction,
     staffSession,
     staffAuthLoading,
     loginStaff,

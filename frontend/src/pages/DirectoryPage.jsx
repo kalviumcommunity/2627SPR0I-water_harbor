@@ -1,23 +1,28 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Filter, RotateCcw, X, ArrowDown, Wrench, Building2, Droplets, AlertCircle } from 'lucide-react';
+import { Search, Filter, RotateCcw, X, ArrowDown, Wrench, Droplets, AlertCircle } from 'lucide-react';
 import { useApp } from '../context/useApp';
 import WaterPointCard from '../components/WaterPointCard';
 import StatusTile from '../components/StatusTile';
+import { STAFF_REFRESH_INTERVAL_MS, startDashboardPolling } from '../lib/reliability';
+import {
+  WATER_POINT_TYPE_OPTIONS,
+  filterWaterPointsStructured,
+} from '../lib/locationFilters';
 
 /**
- * Premium DirectoryPage ("/")
- * Designed with SaaS-grade restraint, clear visual hierarchy, and immediate interactivity:
- * 1. Dark Navy Hero Section (compact & purposeful)
- * 2. Campus Overview Metrics (clean tabular status tiles)
- * 3. Water Points Directory (segmented filters, search toolbar, scannable cards)
- * 4. Supporting Issue-Reporting CTA Section
+ * DirectoryPage ("/")
+ * Public student discovery board with structured campus location & type filters,
+ * anonymous "I've noticed this too" confirmation, and automatic background sync.
  */
 export function DirectoryPage() {
   const {
-    waterPoints,
+    activeWaterPoints,
+    campusLocations,
     activeReportsMap,
     resolvedReportsMap,
+    confirmedReportIds,
+    confirmReportAction,
     stats,
     loading,
     isRefreshing,
@@ -26,54 +31,93 @@ export function DirectoryPage() {
   } = useApp();
 
   const [activeFilter, setActiveFilter] = useState('all'); // 'all' | 'reported' | 'resolved' | 'none'
-  const [selectedBuilding, setSelectedBuilding] = useState('ALL');
+  const [selectedBlockId, setSelectedBlockId] = useState('ALL');
+  const [selectedFloorId, setSelectedFloorId] = useState('ALL');
+  const [selectedBuildingId, setSelectedBuildingId] = useState('ALL');
+  const [selectedAreaId, setSelectedAreaId] = useState('ALL');
+  const [selectedType, setSelectedType] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Extract unique building names for the directory filter dropdown
-  const buildingNames = useMemo(() => {
-    const set = new Set();
-    waterPoints.forEach((wp) => {
-      if (wp.building) set.add(wp.building);
-    });
-    return Array.from(set).sort();
-  }, [waterPoints]);
+  // Keep student directory synced across clients (confirmations, repairs, water points)
+  useEffect(() => {
+    return startDashboardPolling(() => {
+      void refreshData({ silent: true });
+    }, STAFF_REFRESH_INTERVAL_MS);
+  }, [refreshData]);
 
-  // Filtered water points
+  const blocks = useMemo(
+    () => campusLocations.filter((l) => l.location_type === 'block'),
+    [campusLocations]
+  );
+  const floors = useMemo(
+    () => campusLocations.filter((l) => l.location_type === 'floor'),
+    [campusLocations]
+  );
+  const buildings = useMemo(
+    () =>
+      campusLocations.filter(
+        (l) => l.location_type === 'building' || l.location_type === 'facility'
+      ),
+    [campusLocations]
+  );
+  const areas = useMemo(
+    () =>
+      campusLocations.filter(
+        (l) => l.location_type === 'indoor_area' || l.location_type === 'outdoor_area'
+      ),
+    [campusLocations]
+  );
+
+  const hasStructuredFilters =
+    blocks.length > 0 || floors.length > 0 || buildings.length > 0 || areas.length > 0;
+
   const filteredWaterPoints = useMemo(() => {
-    return waterPoints.filter((wp) => {
-      const hasActive = activeReportsMap.has(wp.id);
-      const hasResolved = resolvedReportsMap.has(wp.id);
-
-      // Status filter
-      if (activeFilter === 'reported' && !hasActive) return false;
-      if (activeFilter === 'resolved' && (hasActive || !hasResolved)) return false;
-      if (activeFilter === 'none' && (hasActive || hasResolved)) return false;
-
-      // Building filter
-      if (selectedBuilding !== 'ALL') {
-        const wpBldg = wp.building || 'General Campus';
-        if (wpBldg !== selectedBuilding) return false;
-      }
-
-      // Search query filter
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const matchName = wp.name.toLowerCase().includes(q);
-        const matchLoc = wp.location.toLowerCase().includes(q);
-        const matchBldg = (wp.building || '').toLowerCase().includes(q);
-        if (!matchName && !matchLoc && !matchBldg) return false;
-      }
-
-      return true;
+    return filterWaterPointsStructured({
+      waterPoints: activeWaterPoints,
+      campusLocations,
+      activeReportsMap,
+      resolvedReportsMap,
+      activeFilter,
+      selectedBlockId,
+      selectedFloorId,
+      selectedBuildingId,
+      selectedAreaId,
+      selectedType,
+      selectedActiveState: 'active',
+      searchQuery,
     });
   }, [
-    waterPoints,
+    activeWaterPoints,
+    campusLocations,
     activeReportsMap,
     resolvedReportsMap,
     activeFilter,
-    selectedBuilding,
+    selectedBlockId,
+    selectedFloorId,
+    selectedBuildingId,
+    selectedAreaId,
+    selectedType,
     searchQuery,
   ]);
+
+  const anyFilterActive =
+    activeFilter !== 'all' ||
+    selectedBlockId !== 'ALL' ||
+    selectedFloorId !== 'ALL' ||
+    selectedBuildingId !== 'ALL' ||
+    selectedAreaId !== 'ALL' ||
+    selectedType !== 'ALL' ||
+    Boolean(searchQuery.trim());
+
+  const resetAllFilters = () => {
+    setActiveFilter('all');
+    setSelectedBlockId('ALL');
+    setSelectedFloorId('ALL');
+    setSelectedBuildingId('ALL');
+    setSelectedAreaId('ALL');
+    setSelectedType('ALL');
+    setSearchQuery('');
+  };
 
   const scrollToDiscovery = () => {
     document.getElementById('discovery-section')?.scrollIntoView({ behavior: 'smooth' });
@@ -175,7 +219,7 @@ export function DirectoryPage() {
           </div>
         </section>
 
-        {/* ── 3. Water Points Directory (Directly following Campus Overview) ── */}
+        {/* ── 3. Water Points Directory ──────────────────────────────────── */}
         <section id="discovery-section" aria-label="Water Points Directory" className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
@@ -184,11 +228,11 @@ export function DirectoryPage() {
                   Water Points Directory
                 </h2>
                 <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#EDF2F9] text-[#102454]">
-                  {waterPoints.length}
+                  {activeWaterPoints.length}
                 </span>
               </div>
               <p className="text-xs text-[#5A6B87]">
-                Search individual stations, filter by status, and review recent maintenance
+                Search individual stations, filter by location or category, and review recent maintenance
               </p>
             </div>
 
@@ -241,70 +285,123 @@ export function DirectoryPage() {
             </div>
           </div>
 
-          {/* Integrated Control Toolbar */}
-          <div className="bg-white rounded-xl border border-[#DFE6F0] p-2.5 sm:p-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shadow-xs">
-            {/* Search Input */}
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8C9CB3] pointer-events-none" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by dispenser name, room, or building..."
-                aria-label="Search water points"
-                className="w-full pl-9 pr-8 py-2 bg-[#F8FAFC] text-[#102454] border border-[#DFE6F0] rounded-lg text-xs sm:text-sm focus:bg-white focus:border-[#102454] focus:ring-1 focus:ring-[#102454] placeholder:text-[#8C9CB3] transition-colors"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery('')}
-                  aria-label="Clear search query"
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded text-[#8C9CB3] hover:text-[#102454] hover:bg-[#F1F5F9] cursor-pointer"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
+          {/* Integrated Search + Structured Filters Toolbar */}
+          <div className="bg-white rounded-xl border border-[#DFE6F0] p-2.5 sm:p-3 space-y-2.5 shadow-xs">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+              {/* Search Input */}
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8C9CB3] pointer-events-none" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search by dispenser name, room, area, or building..."
+                  aria-label="Search water points"
+                  className="w-full pl-9 pr-8 py-2 bg-[#F8FAFC] text-[#102454] border border-[#DFE6F0] rounded-lg text-xs sm:text-sm focus:bg-white focus:border-[#102454] focus:ring-1 focus:ring-[#102454] placeholder:text-[#8C9CB3] transition-colors"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    aria-label="Clear search query"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded text-[#8C9CB3] hover:text-[#102454] hover:bg-[#F1F5F9] cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Category/Type Filter */}
+              <select
+                aria-label="Filter by water point category"
+                value={selectedType}
+                onChange={(e) => setSelectedType(e.target.value)}
+                className="py-2 px-3 bg-[#F8FAFC] text-[#102454] border border-[#DFE6F0] rounded-lg text-xs font-medium focus:bg-white focus:border-[#102454] focus:ring-1 focus:ring-[#102454] cursor-pointer"
+              >
+                <option value="ALL">All Categories</option>
+                {WATER_POINT_TYPE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+
+              {/* Refresh Button */}
+              <button
+                type="button"
+                onClick={() => refreshData({ silent: true, notifyOnError: true })}
+                disabled={loading || isRefreshing}
+                title="Refresh live status from API"
+                aria-label="Refresh status data"
+                className="p-2 bg-[#F8FAFC] hover:bg-[#EDF2F9] border border-[#DFE6F0] rounded-lg text-[#102454] transition-colors cursor-pointer flex items-center justify-center shrink-0 disabled:opacity-50"
+              >
+                <RotateCcw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+              </button>
             </div>
 
-            {/* Building Dropdown Filter */}
-            {buildingNames.length > 0 && (
-              <div className="relative shrink-0 flex items-center">
-                <label htmlFor="building-select" className="sr-only">
-                  Filter by building
-                </label>
-                <div className="flex items-center w-full sm:w-auto">
-                  <span className="hidden lg:inline-flex items-center gap-1 mr-2 text-xs font-medium text-[#5A6B87]">
-                    <Building2 className="w-3.5 h-3.5" />
-                    Facility:
-                  </span>
-                  <select
-                    id="building-select"
-                    value={selectedBuilding}
-                    onChange={(e) => setSelectedBuilding(e.target.value)}
-                    className="w-full sm:w-auto py-2 px-3 bg-[#F8FAFC] text-[#102454] border border-[#DFE6F0] rounded-lg text-xs font-medium focus:bg-white focus:border-[#102454] focus:ring-1 focus:ring-[#102454] cursor-pointer"
-                  >
-                    <option value="ALL">All Buildings</option>
-                    {buildingNames.map((name) => (
-                      <option key={name} value={name}>
-                        {name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+            {hasStructuredFilters && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 border-t border-[#F1F5F9]">
+                <select
+                  aria-label="Filter by block"
+                  value={selectedBlockId}
+                  onChange={(e) => setSelectedBlockId(e.target.value)}
+                  disabled={blocks.length === 0}
+                  className="py-1.5 px-2.5 bg-[#F8FAFC] text-[#102454] border border-[#DFE6F0] rounded-lg text-xs font-medium focus:bg-white focus:border-[#102454] cursor-pointer disabled:opacity-50"
+                >
+                  <option value="ALL">All Blocks</option>
+                  {blocks.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  aria-label="Filter by building or facility"
+                  value={selectedBuildingId}
+                  onChange={(e) => setSelectedBuildingId(e.target.value)}
+                  disabled={buildings.length === 0}
+                  className="py-1.5 px-2.5 bg-[#F8FAFC] text-[#102454] border border-[#DFE6F0] rounded-lg text-xs font-medium focus:bg-white focus:border-[#102454] cursor-pointer disabled:opacity-50"
+                >
+                  <option value="ALL">All Buildings / Facilities</option>
+                  {buildings.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  aria-label="Filter by floor"
+                  value={selectedFloorId}
+                  onChange={(e) => setSelectedFloorId(e.target.value)}
+                  disabled={floors.length === 0}
+                  className="py-1.5 px-2.5 bg-[#F8FAFC] text-[#102454] border border-[#DFE6F0] rounded-lg text-xs font-medium focus:bg-white focus:border-[#102454] cursor-pointer disabled:opacity-50"
+                >
+                  <option value="ALL">All Floors</option>
+                  {floors.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.name}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  aria-label="Filter by area"
+                  value={selectedAreaId}
+                  onChange={(e) => setSelectedAreaId(e.target.value)}
+                  disabled={areas.length === 0}
+                  className="py-1.5 px-2.5 bg-[#F8FAFC] text-[#102454] border border-[#DFE6F0] rounded-lg text-xs font-medium focus:bg-white focus:border-[#102454] cursor-pointer disabled:opacity-50"
+                >
+                  <option value="ALL">All Areas</option>
+                  {areas.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
+                  ))}
+                </select>
               </div>
             )}
-
-            {/* Refresh Button */}
-            <button
-              type="button"
-              onClick={() => refreshData()}
-              disabled={loading || isRefreshing}
-              title="Refresh live status from API"
-              aria-label="Refresh status data"
-              className="p-2 bg-[#F8FAFC] hover:bg-[#EDF2F9] border border-[#DFE6F0] rounded-lg text-[#102454] transition-colors cursor-pointer flex items-center justify-center shrink-0 disabled:opacity-50"
-            >
-              <RotateCcw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-            </button>
           </div>
 
           {/* Showing Count Summary & Reset Link */}
@@ -312,18 +409,13 @@ export function DirectoryPage() {
             <div className="flex items-center justify-between text-xs text-[#5A6B87] px-1">
               <span>
                 Showing <strong className="text-[#102454] font-semibold">{filteredWaterPoints.length}</strong> of{' '}
-                {waterPoints.length} stations
-                {selectedBuilding !== 'ALL' && ` in ${selectedBuilding}`}
+                {activeWaterPoints.length} stations
               </span>
 
-              {(activeFilter !== 'all' || selectedBuilding !== 'ALL' || searchQuery.trim()) && (
+              {anyFilterActive && (
                 <button
                   type="button"
-                  onClick={() => {
-                    setActiveFilter('all');
-                    setSelectedBuilding('ALL');
-                    setSearchQuery('');
-                  }}
+                  onClick={resetAllFilters}
                   className="inline-flex items-center gap-1 text-xs font-semibold text-[#D94B4B] hover:underline cursor-pointer"
                 >
                   <X className="w-3 h-3" />
@@ -351,7 +443,7 @@ export function DirectoryPage() {
                 </div>
               ))}
             </div>
-          ) : error && waterPoints.length === 0 ? (
+          ) : error && activeWaterPoints.length === 0 ? (
             <div
               role="alert"
               className="text-center py-14 px-4 bg-white border border-[#F8C9C9] rounded-xl shadow-xs max-w-md mx-auto space-y-2.5"
@@ -373,7 +465,7 @@ export function DirectoryPage() {
                 Retry Connection
               </button>
             </div>
-          ) : waterPoints.length === 0 ? (
+          ) : activeWaterPoints.length === 0 ? (
             <div className="text-center py-14 px-4 bg-white border border-[#DFE6F0] rounded-xl shadow-xs max-w-sm mx-auto space-y-2.5">
               <div className="w-10 h-10 rounded-full bg-[#F3F6FC] border border-[#DFE6F0] flex items-center justify-center mx-auto text-[#5A6B87]">
                 <Droplets className="w-4 h-4" />
@@ -398,11 +490,7 @@ export function DirectoryPage() {
               </p>
               <button
                 type="button"
-                onClick={() => {
-                  setActiveFilter('all');
-                  setSelectedBuilding('ALL');
-                  setSearchQuery('');
-                }}
+                onClick={resetAllFilters}
                 className="mt-1 px-3.5 py-1.5 bg-[#102454] hover:bg-[#162F6B] text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
               >
                 Clear all filters
@@ -410,14 +498,19 @@ export function DirectoryPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-              {filteredWaterPoints.map((wp) => (
-                <WaterPointCard
-                  key={wp.id}
-                  waterPoint={wp}
-                  activeReport={activeReportsMap.get(wp.id)}
-                  recentResolvedReport={resolvedReportsMap.get(wp.id)}
-                />
-              ))}
+              {filteredWaterPoints.map((wp) => {
+                const activeRep = activeReportsMap.get(wp.id);
+                return (
+                  <WaterPointCard
+                    key={wp.id}
+                    waterPoint={wp}
+                    activeReport={activeRep}
+                    recentResolvedReport={resolvedReportsMap.get(wp.id)}
+                    isConfirmed={activeRep ? confirmedReportIds.has(activeRep.id) : false}
+                    onConfirmReport={confirmReportAction}
+                  />
+                );
+              })}
             </div>
           )}
         </section>
